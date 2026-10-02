@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rainbow Flapper Arcade - Power Boss Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            background: #0f172a;
+        }
+        canvas {
+            image-rendering: pixelated;
+        }
+        .rainbow-text {
+            background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: rainbowMove 3s linear infinite;
+        }
+        @keyframes rainbowMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .pulse-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-btn:active {
+            transform: scale(0.95);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-white select-none">
+
+    <div class="relative w-full max-w-md h-[100vh] max-h-[850px] flex flex-col justify-between p-3 sm:p-4">
+        
+        <!-- Header / Stats Bar -->
+        <div class="glass-panel rounded-2xl p-3 flex justify-between items-center z-10 shadow-lg border border-white/10">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="togglePause()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-white/10 flex items-center justify-center text-sm shadow-md pulse-btn" title="Pause Game">
+                    <span id="pauseBtnIcon">⏸️</span>
+                </button>
+                <div>
+                    <h1 class="text-xs uppercase tracking-widest text-gray-400 font-semibold">Rainbow Dash</h1>
+                    <div class="flex items-center gap-1.5">
+                        <span id="difficultyLabel" class="text-xs font-bold text-cyan-400">NORMAL</span>
+                        <span class="text-gray-600">•</span>
+                        <span class="text-xs font-bold text-amber-400 flex items-center gap-0.5">🪙 <span id="coinDisplay">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hearts Display (Max 5) -->
+            <div id="heartsContainer" class="flex items-center gap-0.5 text-base">
+                <span id="heart1">❤️</span>
+                <span id="heart2">❤</span>
+                <span id="heart3">❤</span>
+                <span id="heart4">❤️</span>
+                <span id="heart5">❤️</span>
+            </div>
+            
+            <div class="flex gap-4 text-right">
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase tracking-wider">Score</div>
+                    <div id="scoreDisplay" class="text-2xl font-black text-white leading-none">0</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase tracking-wider">Best</div>
+                    <div id="highScoreDisplay" class="text-2xl font-black text-amber-400 leading-none">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Game Window -->
+        <div class="relative flex-1 my-2 rounded-3xl overflow-hidden shadow-2xl border-2 border-white/10 bg-slate-900">
+            <canvas id="gameCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+            <!-- BOSS HEALTH HUD OVERLAY -->
+            <div id="bossHpContainer" class="hidden absolute top-3 left-1/2 -translate-x-1/2 w-3/4 glass-panel p-2 rounded-xl border border-rose-500/50 flex flex-col items-center gap-1 z-20 shadow-xl">
+                <div class="flex justify-between w-full text-[10px] font-black uppercase text-rose-400 tracking-wider">
+                    <span id="bossTitle">⚠️ POWER BOSS WAVE ⚠</span>
+                    <span id="bossHpText">100 / 100</span>
+                </div>
+                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                    <div id="bossHpBar" class="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 transition-all duration-150" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Combo & Portal Surge Banner Overlay -->
+            <div id="surgeBanner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-rose-600 border border-rose-300 text-xs font-black tracking-widest text-white animate-bounce shadow-lg z-10">
+                🚨 PORTAL SURGE! 🚨
+            </div>
+
+            <!-- Active Power-Up Banner Overlay -->
+            <div id="activePowerupDisplay" class="hidden absolute top-14 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full glass-panel border border-cyan-400/50 text-xs font-bold tracking-wider text-cyan-300 shadow-lg z-10">
+                ACTIVE
+            </div>
+
+            <!-- ACTIVE ABILITY HUD BUTTON -->
+            <button type="button" id="abilityBtn" onclick="triggerActiveAbility(event)" class="absolute bottom-4 right-4 z-20 w-16 h-16 rounded-full glass-panel border-2 border-amber-400 flex flex-col items-center justify-center shadow-2xl pulse-btn active:scale-90 transition">
+                <span id="abilityIcon" class="text-2xl">🐉</span>
+                <span id="abilityName" class="text-[9px] font-black uppercase text-amber-300 tracking-tighter mt-[-2px]">Roar</span>
+                
+                <!-- Cooldown Radial Overlay -->
+                <div id="abilityCooldownOverlay" class="hidden absolute inset-0 bg-slate-950/80 rounded-full flex items-center justify-center text-sm font-black text-amber-400 border border-amber-500/40">
+                    <span id="cooldownText">15s</span>
+                </div>
+            </button>
+
+            <!-- START OVERLAY -->
+            <div id="startOverlay" class="absolute inset-0 flex flex-col items-center justify-between p-6 glass-panel z-20">
+                <div class="text-center mt-2">
+                    <h2 class="text-3xl font-black tracking-tight rainbow-text drop-shadow-md">RAINBOW DRAGON</h2>
+                    <p class="text-slate-300 text-[11px] mt-1">Face Epic Power Bosses Every 50 Levels!</p>
+                </div>
+
+                <div class="w-full space-y-2.5 my-auto">
+                    <p class="text-[11px] font-bold text-center text-slate-400 uppercase tracking-widest">Select Difficulty</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setDifficulty('easy')" id="btn-easy" class="diff-btn pulse-btn py-1.5 rounded-xl font-bold text-xs bg-slate-800 border border-slate-700 text-emerald-400">EASY</button>
+                        <button type="button" onclick="setDifficulty('normal')" id="btn-normal" class="diff-btn pulse-btn py-1.5 rounded-xl font-bold text-xs bg-slate-800 border-2 border-cyan-500 text-cyan-400 shadow-lg shadow-cyan-500/20">NORMAL</button>
+                        <button type="button" onclick="setDifficulty('hard')" id="btn-hard" class="diff-btn pulse-btn py-1.5 rounded-xl font-bold text-xs bg-slate-800 border border-slate-700 text-rose-400">HARD</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="openShop()" class="py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 pulse-btn">
+                            🛍 Item Shop
+                        </button>
+                        <button type="button" onclick="openQuests()" class="py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-300 text-xs font-bold flex items-center justify-center gap-1.5 pulse-btn">
+                            📜 Quests
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="button" onclick="openAchievements()" class="flex-1 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 text-xs font-bold flex items-center justify-center gap-1.5 pulse-btn">
+                            🏆 Achievements
+                        </button>
+                        <button type="button" id="soundToggleBtn" onclick="toggleSound()" class="flex-1 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-xs font-semibold flex items-center justify-center gap-1.5">
+                            <span id="soundIcon">🔊</span> <span id="soundText">Sound: ON</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="startGame()" class="pulse-btn w-full py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 font-black text-base text-white shadow-xl shadow-purple-500/30 hover:brightness-110 active:scale-95 transition">
+                    PLAY NOW
+                </button>
+            </div>
+
+            <!-- PAUSE OVERLAY -->
+            <div id="pauseOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 glass-panel z-30 space-y-2.5">
+                <h2 class="text-2xl font-black text-cyan-400 mb-1">GAME PAUSED</h2>
+                <button type="button" onclick="togglePause()" class="pulse-btn w-48 py-2.5 rounded-xl bg-cyan-500 font-black text-slate-950 text-xs shadow-lg">
+                    RESUME
+                </button>
+                <button type="button" onclick="openShop()" class="pulse-btn w-48 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 font-bold text-xs text-amber-300">
+                    🛍 ITEM SHOP
+                </button>
+                <button type="button" onclick="openQuests()" class="pulse-btn w-48 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 font-bold text-xs text-purple-300">
+                    📜 QUESTS
+                </button>
+                <button type="button" onclick="openAchievements()" class="pulse-btn w-48 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 font-bold text-xs text-cyan-300">
+                    🏆 ACHIEVEMENTS
+                </button>
+                <button type="button" onclick="confirmExitToMenu()" class="pulse-btn w-48 py-2.5 rounded-xl bg-slate-800 border border-white/10 font-bold text-xs text-slate-300">
+                    MAIN MENU
+                </button>
+            </div>
+
+            <!-- CONFIRM RETURN MODAL OVERLAY -->
+            <div id="confirmMenuModal" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 glass-panel z-40 bg-slate-950/90">
+                <div class="text-center w-full max-w-xs space-y-4 bg-slate-900 p-6 rounded-2xl border border-rose-500/40 shadow-2xl">
+                    <div class="text-3xl">⚠️</div>
+                    <h3 class="text-xl font-black text-rose-400">RETURN TO MENU?</h3>
+                    <p class="text-xs text-slate-300">Are you sure? All current match coin collections, stats, and unlocked skins/trails will be reset!</p>
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="executeExitToMenu()" class="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs pulse-btn">YES, EXIT</button>
+                        <button type="button" onclick="closeConfirmMenuModal()" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold text-xs">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SHOP OVERLAY -->
+            <div id="shopOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-between p-4 glass-panel z-30">
+                <div class="text-center w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <h2 class="text-xl font-black text-amber-400">ARCADE SHOP</h2>
+                        <button type="button" onclick="openAdForCoins()" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black pulse-btn flex items-center gap-1 shadow-md">
+                            📺 +200 🪙 AD
+                        </button>
+                    </div>
+                    <p class="text-slate-400 text-xs mt-0.5">Coins: 🪙 <span id="shopCoinsDisplay">0</span></p>
+                    
+                    <!-- Tabs -->
+                    <div class="flex gap-1.5 mt-2.5 border-b border-white/10 pb-2">
+                        <button type="button" id="tabSkinsBtn" onclick="switchShopTab('skins')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300">
+                            🎨 Skins
+                        </button>
+                        <button type="button" id="tabTrailsBtn" onclick="switchShopTab('trails')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400">
+                            ✨ Trail FX
+                        </button>
+                        <button type="button" id="tabSkillsBtn" onclick="switchShopTab('skills')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400">
+                            ⚡ Skills
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Skins Tab Container -->
+                <div id="skinsContainer" class="w-full space-y-2 my-auto max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Dynamic Skins Inserted Here -->
+                </div>
+
+                <!-- Trails Tab Container -->
+                <div id="trailsContainer" class="hidden w-full space-y-2 my-auto max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Dynamic Trails Inserted Here -->
+                </div>
+
+                <!-- Skills Upgrades Tab Container -->
+                <div id="skillsContainer" class="hidden w-full space-y-2 my-auto max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Dynamic Skills Upgrades Inserted Here -->
+                </div>
+
+                <button type="button" onclick="closeShop()" class="pulse-btn w-full py-2.5 rounded-xl bg-slate-800 border border-white/10 font-bold text-slate-200 text-xs mt-2">
+                    BACK
+                </button>
+            </div>
+
+            <!-- QUESTS OVERLAY -->
+            <div id="questsOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-between p-4 glass-panel z-30">
+                <div class="text-center w-full">
+                    <h2 class="text-xl font-black text-purple-400">📜 DAILY QUESTS</h2>
+                    <p class="text-slate-400 text-xs mt-0.5">Complete missions to earn bonus coins!</p>
+                </div>
+
+                <div id="questsContainer" class="w-full space-y-2.5 my-auto max-h-[320px] overflow-y-auto pr-1">
+                    <!-- Dynamic Quests Inserted Here -->
+                </div>
+
+                <button type="button" onclick="closeQuests()" class="pulse-btn w-full py-2.5 rounded-xl bg-slate-800 border border-white/10 font-bold text-slate-200 text-xs mt-2">
+                    BACK
+                </button>
+            </div>
+
+            <!-- ACHIEVEMENTS OVERLAY -->
+            <div id="achievementsOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-between p-4 glass-panel z-30">
+                <div class="text-center w-full">
+                    <h2 class="text-xl font-black text-cyan-400">🏆 ACHIEVEMENTS</h2>
+                    <p class="text-slate-400 text-xs mt-0.5">Unlock milestone rewards!</p>
+                </div>
+
+                <div id="achievementsContainer" class="w-full space-y-2.5 my-auto max-h-[320px] overflow-y-auto pr-1">
+                    <!-- Dynamic Achievements Inserted Here -->
+                </div>
+
+                <button type="button" onclick="closeAchievements()" class="pulse-btn w-full py-2.5 rounded-xl bg-slate-800 border border-white/10 font-bold text-slate-200 text-xs mt-2">
+                    BACK
+                </button>
+            </div>
+
+            <!-- AD MODAL SIMULATION OVERLAY -->
+            <div id="adModalOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 glass-panel z-40 bg-slate-950/90">
+                <div class="text-center w-full max-w-xs space-y-4 bg-slate-900 p-6 rounded-2xl border border-amber-500/40 shadow-2xl">
+                    <div class="text-3xl">📺</div>
+                    <h3 id="adModalTitle" class="text-xl font-black text-amber-400">WATCH AD TO UNLOCK</h3>
+                    <p id="adModalDescription" class="text-xs text-slate-300">Watch a quick promotional video to instantly unlock this item for free!</p>
+                    <div id="adProgressBarContainer" class="w-full h-2 bg-slate-800 rounded-full overflow-hidden hidden">
+                        <div id="adProgressBar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" id="watchAdBtn" onclick="simulateAdPlayback()" class="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs pulse-btn">WATCH AD</button>
+                        <button type="button" onclick="closeAdModal()" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold text-xs">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GAME OVER OVERLAY -->
+            <div id="gameOverOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 glass-panel z-20">
+                <div class="text-center w-full max-w-xs space-y-4">
+                    <div class="inline-block p-3 rounded-full bg-rose-500/20 border border-rose-500/30 text-3xl mb-1">
+                        💥
+                    </div>
+                    <h2 class="text-3xl font-black text-rose-400">GAME OVER!</h2>
+                    
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-white/10 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 text-sm">Score</span>
+                            <span id="finalScore" class="text-2xl font-black text-white">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 text-sm">Coins Earned</span>
+                            <span id="finalCoins" class="text-lg font-bold text-amber-400">+0 🪙</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-slate-800 pt-2">
+                            <span class="text-slate-400 text-sm">Best High Score</span>
+                            <span id="finalHighScore" class="text-2xl font-black text-amber-400">0</span>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="startGame()" class="pulse-btn w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 font-black text-lg text-slate-950 shadow-xl shadow-cyan-500/20 hover:brightness-110 transition">
+                        TRY AGAIN
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Footer -->
+        <div class="text-center text-xs text-slate-500 py-1 font-medium flex justify-between px-2">
+            <span>Tap / <kbd class="px-1 bg-slate-800 rounded border border-slate-700 text-slate-300">Space</kbd> Flap & Shoot</span>
+            <span>Ability: <kbd class="px-1 bg-slate-800 rounded border border-slate-700 text-slate-300">E</kbd> / <kbd class="px-1 bg-slate-800 rounded border border-slate-700 text-slate-300">Shift</kbd></span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playFlap() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playScore() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playCoin() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(987.77, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playPowerup() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playAbility() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playNuke() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            }
+
+            playCrash() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playBossHit() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+        }
+
+        const sound = new SoundSystem();
+
+        const DIFFICULTIES = {
+            easy: { 
+                gravity: 0.22, 
+                lift: -6.0, 
+                speed: 1.8, 
+                minGap: 240, 
+                maxGap: 280, 
+                spawnRate: 150, 
+                moveSpeed: 0, 
+                portalSurgeEnabled: false,
+                obstacleChance: 0.0 
+            },
+            normal: { 
+                gravity: 0.45, 
+                lift: -8.5, 
+                speed: 2.8, 
+                minGap: 160, 
+                maxGap: 195, 
+                spawnRate: 85, 
+                moveSpeed: 1.5, 
+                portalSurgeEnabled: true,
+                obstacleChance: 0.2 
+            },
+            hard: { 
+                gravity: 0.62, 
+                lift: -10.2, 
+                speed: 3.8, 
+                minGap: 115, 
+                maxGap: 135, 
+                spawnRate: 60, 
+                moveSpeed: 3.2, 
+                portalSurgeEnabled: true,
+                obstacleChance: 0.5 
+            }
+        };
+
+        const SKINS = [
+            { id: 'rainbow', name: 'Rainbow Dash', cost: 0, primary: '#a855f7', abilityIcon: '🐉', abilityName: 'Roar', cooldown: 15, adUnlock: false },
+            { id: 'neon', name: 'Cyber Neon', cost: 25, primary: '#06b6d4', abilityIcon: '🧲', abilityName: 'Magnet', cooldown: 10, adUnlock: false },
+            { id: 'phoenix', name: 'Golden Phoenix', cost: 50, primary: '#f59e0b', abilityIcon: '🔥', abilityName: 'Dash', cooldown: 12, adUnlock: false },
+            { id: 'void', name: 'Cosmic Void', cost: 100, primary: '#ec4899', abilityIcon: '🌀', abilityName: 'Warp', cooldown: 14, adUnlock: false },
+            { id: 'emerald_dragon', name: 'Emerald Wyrm', cost: 0, primary: '#10b981', abilityIcon: '💎', abilityName: 'Shield', cooldown: 12, adUnlock: true },
+            { id: 'amethyst_lord', name: 'Amethyst Sovereign', cost: 0, primary: '#8b5cf6', abilityIcon: '🔮', abilityName: 'Freeze', cooldown: 15, adUnlock: true },
+            { id: 'magma_beast', name: 'Magma Inferno', cost: 0, primary: '#ef4444', abilityIcon: '🌋', abilityName: 'Nuke', cooldown: 20, adUnlock: true },
+            { id: 'frost_bite', name: 'Frost Wyvern', cost: 0, primary: '#38bdf8', abilityIcon: '❄️', abilityName: 'Blizzard', cooldown: 14, adUnlock: true },
+            { id: 'galaxy_starlight', name: 'Galaxy Starlight', cost: 0, primary: '#6366f1', abilityIcon: '✨', abilityName: 'Wormhole', cooldown: 12, adUnlock: true }
+        ];
+
+        const TRAILS = [
+            { id: 'rainbow', name: 'Rainbow Trail', cost: 0, preview: '🌈', adUnlock: false },
+            { id: 'stars', name: 'Pixel Stars', cost: 30, preview: '⭐', adUnlock: false },
+            { id: 'fire', name: 'Fire & Smoke', cost: 60, preview: '🔥', adUnlock: false },
+            { id: 'neon_grid', name: 'Neon Grid', cost: 90, preview: '⚡', adUnlock: false },
+            { id: 'bubble_pop', name: 'Bubble Pop', cost: 0, preview: '🫧', adUnlock: true },
+            { id: 'hearts_trail', name: 'Love Hearts', cost: 0, preview: '💖', adUnlock: true },
+            { id: 'matrix_code', name: 'Matrix Code', cost: 0, preview: '💻', adUnlock: true },
+            { id: 'lightning_bolt', name: 'Thunder Strike', cost: 0, preview: '⚡', adUnlock: true },
+            { id: 'golden_sparkles', name: 'Golden Dust', cost: 0, preview: '🌟', adUnlock: true }
+        ];
+
+        const SKILLS_UPGRADES = [
+            { id: 'roar_power', name: 'Dragon Roar Might', icon: '🐉', desc: 'Increases active skill boss/portal damage', baseCost: 20, costScale: 1.8, maxLevel: 5 },
+            { id: 'shield_duration', name: 'Aegis Shield Guard', icon: '🛡️', desc: 'Extends shield invincibility & power duration', baseCost: 15, costScale: 1.6, maxLevel: 5 },
+            { id: 'magnet_range', name: 'Vortex Magnetism', icon: '🧲', desc: 'Increases coin & powerup collection pull radius', baseCost: 15, costScale: 1.5, maxLevel: 5 },
+            { id: 'coin_boost', name: 'Golden Hoard Multiplier', icon: '🪙', desc: 'Increases bonus coins earned per match', baseCost: 25, costScale: 2.0, maxLevel: 5 }
+        ];
+
+        // DAILY QUESTS DEFINITIONS
+        let dailyQuests = [
+            { id: 'play_games', title: 'Arcade Enthusiast', desc: 'Play 3 games', target: 3, progress: 0, reward: 50, completed: false },
+            { id: 'collect_coins', title: 'Coin Collector', desc: 'Collect 20 coins total', target: 20, progress: 0, reward: 75, completed: false },
+            { id: 'score_points', title: 'Portal Jumper', desc: 'Score 25 points total', target: 25, progress: 0, reward: 100, completed: false }
+        ];
+
+        // ACHIEVEMENTS DEFINITIONS
+        let achievements = [
+            { id: 'first_flight', title: 'First Flight', desc: 'Start your first arcade game', target: 1, progress: 0, reward: 25, unlocked: false },
+            { id: 'high_flyer', title: 'High Flyer', desc: 'Reach a score of 50', target: 50, progress: 0, reward: 150, unlocked: false },
+            { id: 'coin_hoarder', title: 'Dragon Treasury', desc: 'Collect 100 coins in total', target: 100, progress: 0, reward: 200, unlocked: false },
+            { id: 'boss_slayer', title: 'Boss Slayer', desc: 'Defeat your first Power Boss', target: 1, progress: 0, reward: 250, unlocked: false }
+        ];
+
+        let skillLevels = { roar_power: 0, shield_duration: 0, magnet_range: 0, coin_boost: 0 };
+
+        let currentDifficulty = 'normal';
+        let config = DIFFICULTIES[currentDifficulty];
+
+        let gameState = 'START';
+        let isPaused = false;
+        let activeShopTab = 'skins';
+        let score = 0;
+        let combo = 1;
+        let coins = 0;
+        let sessionCoins = 0;
+        
+        let unlockedSkins = ["rainbow"];
+        let activeSkin = "rainbow";
+
+        let unlockedTrails = ["rainbow"];
+        let activeTrail = "rainbow";
+
+        let pendingAdItemType = null; 
+        let pendingAdItemId = null;
+        let wasPlayingBeforeShop = false;
+
+        let highScore = parseInt(localStorage.getItem('rainbow_flapper_highscore') || '0');
+        let totalCoinsEarned = parseInt(localStorage.getItem('rainbow_flapper_total_coins') || '0');
+        let totalGamesPlayed = parseInt(localStorage.getItem('rainbow_flapper_total_games') || '0');
+        let bossesDefeatedCount = parseInt(localStorage.getItem('rainbow_flapper_bosses_defeated') || '0');
+
+        let frameCount = 0;
+        let rainbowHue = 0;
+        let surgeTimer = 0;
+        let hearts = 5;
+
+        let abilityCooldownFrames = 0;
+
+        let nextBossLevel = 75;
+        let activeBoss = null;
+        let playerProjectiles = [];
+        let bossProjectiles = [];
+
+        const BOSS_TYPES = [
+            { id: 'stalker', name: 'Void Stalker', hpMultiplier: 1.0, color: '#dc2626', secondaryColor: '#991b1b', radius: 32, attackSpeed: 70, type: 'standard' },
+            { id: 'behemoth', name: 'Flame Behemoth (Power Boss)', hpMultiplier: 1.5, color: '#f97316', secondaryColor: '#b45309', radius: 42, attackSpeed: 55, type: 'triple' },
+            { id: 'phantom', name: 'Cyber Phantom (Power Boss)', hpMultiplier: 2.0, color: '#06b6d4', secondaryColor: '#0e7490', radius: 38, attackSpeed: 45, type: 'teleport' },
+            { id: 'hydra', name: 'Plasma Hydra (Elite Boss)', hpMultiplier: 2.4, color: '#10b981', secondaryColor: '#047857', radius: 44, attackSpeed: 42, type: 'triple' },
+            { id: 'solar', name: 'Solar Titan (Power Boss)', hpMultiplier: 2.6, color: '#eab308', secondaryColor: '#ca8a04', radius: 46, attackSpeed: 40, type: 'bullet_hell' },
+            { id: 'overlord', name: 'Rainbow Overlord (Ultimate Boss)', hpMultiplier: 3.0, color: '#a855f7', secondaryColor: '#6b21a8', radius: 48, attackSpeed: 38, type: 'bullet_hell' }
+        ];
+
+        let dragon = {
+            x: 60,
+            y: 200,
+            baseRadius: 14,
+            radius: 14,
+            velocity: 0,
+            rotation: 0,
+            hasShield: false,
+            invincibleTimer: 0,
+            scoreMultiplierTimer: 0,
+            slowMotionTimer: 0,
+            magnetTimer: 0,
+            miniTimer: 0,
+            ghostTimer: 0,
+            laserBeamTimer: 0,
+            freezeTimer: 0,
+            titanTimer: 0
+        };
+
+        let portals = [];
+        let particles = [];
+        let floatTexts = [];
+        let trail = [];
+        let stars = [];
+        let powerups = [];
+        let collectibleCoins = [];
+        let obstacles = [];
+
+        const POWERUP_TYPES = [
+            { type: 'shield', symbol: '🛡️', color: '#38bdf8' },
+            { type: 'multiplier', symbol: '⭐', color: '#f59e0b' },
+            { type: 'slow', symbol: '⏳', color: '#a855f7' },
+            { type: 'magnet', symbol: '🧲', color: '#ef4444' },
+            { type: 'mini', symbol: '🔍', color: '#10b981' },
+            { type: 'ghost', symbol: '👻', color: '#e0e7ff' },
+            { type: 'heart', symbol: '❤️', color: '#f43f5e' },
+            { type: 'teleport', symbol: '🌀', color: '#8b5cf6' },
+            { type: 'laser', symbol: '💥', color: '#f97316' },
+            { type: 'nuke', symbol: '💣', color: '#ef4444' },
+            { type: 'freeze', symbol: '🧊', color: '#06b6d4' },
+            { type: 'titan', symbol: '👑', color: '#eab308' },
+            { type: 'coin_storm', symbol: '🪙', color: '#f59e0b' }
+        ];
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            initBackgroundStars();
+        }
+
+        function initBackgroundStars() {
+            stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    alpha: Math.random() * 0.8 + 0.2,
+                    speed: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function updateCoinDisplays() {
+            document.getElementById('coinDisplay').innerText = coins;
+            document.getElementById('shopCoinsDisplay').innerText = coins;
+        }
+
+        function updateHeartsDisplay() {
+            for (let i = 1; i <= 5; i++) {
+                const heartElem = document.getElementById(`heart${i}`);
+                if (i <= hearts) {
+                    heartElem.innerText = '❤️';
+                    heartElem.style.opacity = '1.0';
+                } else {
+                    heartElem.innerText = '🖤';
+                    heartElem.style.opacity = '0.3';
+                }
+            }
+        }
+
+        function updateAbilityHUD() {
+            const skin = SKINS.find(s => s.id === activeSkin) || SKINS[0];
+            document.getElementById('abilityIcon').innerText = skin.abilityIcon;
+            document.getElementById('abilityName').innerText = skin.abilityName;
+
+            const overlay = document.getElementById('abilityCooldownOverlay');
+            if (abilityCooldownFrames > 0) {
+                overlay.classList.remove('hidden');
+                document.getElementById('cooldownText').innerText = `${Math.ceil(abilityCooldownFrames / 60)}s`;
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function checkQuestProgress(type, amount = 1) {
+            dailyQuests.forEach(q => {
+                if (!q.completed && q.id === type) {
+                    q.progress = Math.min(q.target, q.progress + amount);
+                    if (q.progress >= q.target) {
+                        q.completed = true;
+                        coins += q.reward;
+                        spawnFloatingText(`📜 QUEST COMPLETED! +${q.reward} 🪙`, canvas.width / 2 - 90, 80, '#a855f7');
+                        updateCoinDisplays();
+                    }
+                }
+            });
+        }
+
+        function checkAchievementProgress() {
+            achievements.forEach(ach => {
+                if (!ach.unlocked) {
+                    if (ach.id === 'first_flight') {
+                        ach.progress = 1;
+                    } else if (ach.id === 'high_flyer') {
+                        ach.progress = Math.max(ach.progress, highScore);
+                    } else if (ach.id === 'coin_hoarder') {
+                        ach.progress = Math.max(ach.progress, totalCoinsEarned);
+                    } else if (ach.id === 'boss_slayer') {
+                        ach.progress = Math.max(ach.progress, bossesDefeatedCount);
+                    }
+
+                    if (ach.progress >= ach.target) {
+                        ach.unlocked = true;
+                        coins += ach.reward;
+                        spawnFloatingText(`🏆 ACHIEVEMENT UNLOCKED! +${ach.reward} 🪙`, canvas.width / 2 - 100, 60, '#06b6d4');
+                        updateCoinDisplays();
+                    }
+                }
+            });
+        }
+
+        function triggerActiveAbility(e) {
+            if (e) e.stopPropagation();
+            if (gameState !== 'PLAYING' || isPaused || abilityCooldownFrames > 0) return;
+
+            const skin = SKINS.find(s => s.id === activeSkin) || SKINS[0];
+            abilityCooldownFrames = skin.cooldown * 60;
+            sound.playAbility();
+
+            const roarBonusDamage = skillLevels.roar_power * 10;
+
+            if (activeSkin === 'rainbow' || activeSkin === 'galaxy_starlight') {
+                if (activeBoss) {
+                    const dmg = 25 + roarBonusDamage;
+                    activeBoss.hp -= dmg;
+                    updateBossHpBar();
+                    spawnFloatingText(`🐉 ROAR BLAST! -${dmg} HP`, activeBoss.x, activeBoss.y, skin.primary);
+                } else {
+                    let targetPortal = portals.find(p => !p.passed && p.x > dragon.x);
+                    if (targetPortal) {
+                        targetPortal.passed = true;
+                        score += 1;
+                        document.getElementById('scoreDisplay').innerText = score;
+                        spawnFloatingText('🐉 DRAGON ROAR!', dragon.x, dragon.y - 20, skin.primary);
+                        portals = portals.filter(p => p !== targetPortal);
+                    } else {
+                        spawnFloatingText('🐉 DRAGON ROAR!', dragon.x, dragon.y - 20, skin.primary);
+                    }
+                }
+            } else if (activeSkin === 'neon') {
+                dragon.magnetTimer = 420 + (skillLevels.shield_duration * 60);
+                spawnFloatingText('🧲 CYBER MAGNET!', dragon.x, dragon.y - 20, skin.primary);
+            } else if (activeSkin === 'phoenix' || activeSkin === 'magma_beast') {
+                dragon.invincibleTimer = 120 + (skillLevels.shield_duration * 30);
+                dragon.velocity = -4;
+                spawnFloatingText('🔥 FLAME DASH!', dragon.x, dragon.y - 20, skin.primary);
+                for (let i = 0; i < 20; i++) {
+                    particles.push({
+                        x: dragon.x, y: dragon.y,
+                        vx: (Math.random() - 0.5) * 8 - 4, vy: (Math.random() - 0.5) * 6,
+                        size: Math.random() * 5 + 2, color: skin.primary, life: 1.0
+                    });
+                }
+            } else if (activeSkin === 'void' || activeSkin === 'amethyst_lord') {
+                triggerWormholeJump();
+            } else if (activeSkin === 'emerald_dragon') {
+                dragon.hasShield = true;
+                spawnFloatingText('💎 EMERALD SHIELD!', dragon.x, dragon.y - 20, skin.primary);
+            } else if (activeSkin === 'frost_bite' || activeSkin === 'amethyst_lord') {
+                dragon.freezeTimer = 360 + (skillLevels.shield_duration * 60);
+                spawnFloatingText('🧊 TIME FREEZE (6s) - PORTAL SLOW!', dragon.x, dragon.y - 20, skin.primary);
+            }
+
+            updateAbilityHUD();
+        }
+
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            config = DIFFICULTIES[level];
+            document.getElementById('difficultyLabel').innerText = level.toUpperCase();
+            
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.classList.remove('border-2', 'border-cyan-500', 'shadow-lg', 'shadow-cyan-500/20');
+                btn.classList.add('border-slate-700');
+            });
+
+            const activeBtn = document.getElementById(`btn-${level}`);
+            activeBtn.classList.remove('border-slate-700');
+            activeBtn.classList.add('border-2', 'border-cyan-500', 'shadow-lg', 'shadow-cyan-500/20');
+        }
+
+        function toggleSound() {
+            sound.enabled = !sound.enabled;
+            document.getElementById('soundIcon').innerText = sound.enabled ? '🔊' : '🔇';
+            document.getElementById('soundText').innerText = `Sound: ${sound.enabled ? 'ON' : 'OFF'}`;
+        }
+
+        function togglePause() {
+            if (gameState !== 'PLAYING') return;
+            isPaused = !isPaused;
+            document.getElementById('pauseBtnIcon').innerText = isPaused ? '▶' : '⏸';
+            document.getElementById('pauseOverlay').classList.toggle('hidden', !isPaused);
+        }
+
+        function confirmExitToMenu() {
+            document.getElementById('confirmMenuModal').classList.remove('hidden');
+        }
+
+        function closeConfirmMenuModal() {
+            document.getElementById('confirmMenuModal').classList.add('hidden');
+        }
+
+        function executeExitToMenu() {
+            coins = 0;
+            sessionCoins = 0;
+            skillLevels = { roar_power: 0, shield_duration: 0, magnet_range: 0, coin_boost: 0 };
+            unlockedSkins = ["rainbow"];
+            activeSkin = "rainbow";
+            unlockedTrails = ["rainbow"];
+            activeTrail = "rainbow";
+
+            closeConfirmMenuModal();
+            isPaused = false;
+            gameState = 'START';
+            document.getElementById('pauseOverlay').classList.add('hidden');
+            document.getElementById('startOverlay').classList.remove('hidden');
+            document.getElementById('pauseBtnIcon').innerText = '⏸';
+            document.getElementById('bossHpContainer').classList.add('hidden');
+            updateCoinDisplays();
+            updateAbilityHUD();
+        }
+
+        function spawnFloatingText(text, x, y, color = '#f59e0b') {
+            floatTexts.push({ text, x, y, alpha: 1.0, color });
+        }
+
+        function flap() {
+            sound.init();
+            if (gameState === 'PLAYING' && !isPaused) {
+                dragon.velocity = config.lift;
+                sound.playFlap();
+                
+                if (activeBoss) {
+                    playerProjectiles.push({
+                        x: dragon.x + dragon.radius,
+                        y: dragon.y,
+                        radius: 6,
+                        vx: 8,
+                        vy: (Math.random() - 0.5) * 1.2
+                    });
+                }
+
+                for (let i = 0; i < 6; i++) {
+                    particles.push({
+                        x: dragon.x - 5,
+                        y: dragon.y,
+                        vx: (Math.random() - 0.5) * 3 - 2,
+                        vy: (Math.random() - 0.5) * 3,
+                        size: Math.random() * 4 + 2,
+                        color: `hsl(${rainbowHue}, 100%, 70%)`,
+                        life: 1.0
+                    });
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameState === 'START' || gameState === 'GAMEOVER') startGame();
+                else flap();
+            } else if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                e.preventDefault();
+                triggerActiveAbility();
+            } else if (e.code === 'KeyP' || e.code === 'Escape') {
+                togglePause();
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (gameState === 'PLAYING' && !isPaused) flap();
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'PLAYING' && !isPaused) flap();
+        }, { passive: false });
+
+        function startGame() {
+            sound.init();
+
+            coins = 0;
+            sessionCoins = 0;
+            skillLevels = { roar_power: 0, shield_duration: 0, magnet_range: 0, coin_boost: 0 };
+            unlockedSkins = ["rainbow"];
+            activeSkin = "rainbow";
+            unlockedTrails = ["rainbow"];
+            activeTrail = "rainbow";
+
+            gameState = 'PLAYING';
+            isPaused = false;
+            hearts = 5;
+            score = 0;
+            combo = 1;
+            surgeTimer = 0;
+            abilityCooldownFrames = 0;
+            nextBossLevel = 75;
+            activeBoss = null;
+            playerProjectiles = [];
+            bossProjectiles = [];
+
+            dragon.y = canvas.height / 2;
+            dragon.velocity = 0;
+            dragon.hasShield = false;
+            dragon.invincibleTimer = 0;
+            dragon.scoreMultiplierTimer = 0;
+            dragon.slowMotionTimer = 0;
+            dragon.magnetTimer = 0;
+            dragon.miniTimer = 0;
+            dragon.ghostTimer = 0;
+            dragon.laserBeamTimer = 0;
+            dragon.freezeTimer = 0;
+            dragon.titanTimer = 0;
+            dragon.radius = dragon.baseRadius;
+            portals = [];
+            particles = [];
+            floatTexts = [];
+            trail = [];
+            powerups = [];
+            collectibleCoins = [];
+            obstacles = [];
+            frameCount = 0;
+
+            totalGamesPlayed++;
+            localStorage.setItem('rainbow_flapper_total_games', totalGamesPlayed);
+            checkQuestProgress('play_games', 1);
+            checkAchievementProgress();
+
+            updateCoinDisplays();
+            updateHeartsDisplay();
+            updateAbilityHUD();
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('highScoreDisplay').innerText = highScore;
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            document.getElementById('activePowerupDisplay').classList.add('hidden');
+            document.getElementById('surgeBanner').classList.add('hidden');
+            document.getElementById('bossHpContainer').classList.add('hidden');
+        }
+
+        function spawnBoss() {
+            const bossIndex = Math.floor(score / 50) - 1;
+            const bossTemplate = BOSS_TYPES[Math.min(bossIndex, BOSS_TYPES.length - 1)];
+            const scaledHp = Math.floor((60 + (score * 1.5)) * bossTemplate.hpMultiplier);
+            
+            activeBoss = {
+                x: canvas.width + 80,
+                targetX: canvas.width - 90,
+                y: canvas.height / 2,
+                radius: bossTemplate.radius,
+                maxHp: scaledHp,
+                hp: scaledHp,
+                attackCooldown: 0,
+                moveAngle: 0,
+                name: bossTemplate.name,
+                color: bossTemplate.color,
+                secondaryColor: bossTemplate.secondaryColor,
+                type: bossTemplate.type,
+                teleportTimer: 0
+            };
+
+            portals = []; 
+            obstacles = [];
+
+            document.getElementById('bossTitle').innerText = `⚠️ ${activeBoss.name} ⚠`;
+            document.getElementById('bossHpContainer').classList.remove('hidden');
+            updateBossHpBar();
+            spawnFloatingText(`⚠️ ${activeBoss.name.toUpperCase()} APPROACHING! ⚠️`, canvas.width / 2 - 110, 100, '#ef4444');
+        }
+
+        function updateBossHpBar() {
+            if (!activeBoss) return;
+            const pct = Math.max(0, (activeBoss.hp / activeBoss.maxHp) * 100);
+            document.getElementById('bossHpBar').style.width = `${pct}%`;
+            document.getElementById('bossHpText').innerText = `${Math.max(0, activeBoss.hp)} / ${activeBoss.maxHp}`;
+        }
+
+        function defeatBoss() {
+            sound.playNuke();
+            const rewardCoins = 25 + (skillLevels.coin_boost * 5);
+            spawnFloatingText(`🎉 POWER BOSS DEFEATED! +${rewardCoins} COINS`, canvas.width / 2 - 90, canvas.height / 2, '#38bdf8');
+            
+            sessionCoins += rewardCoins;
+            coins += rewardCoins;
+            totalCoinsEarned += rewardCoins;
+            bossesDefeatedCount++;
+            localStorage.setItem('rainbow_flapper_total_coins', totalCoinsEarned);
+            localStorage.setItem('rainbow_flapper_bosses_defeated', bossesDefeatedCount);
+
+            checkAchievementProgress();
+
+            score += 10;
+            if (hearts < 5) hearts++;
+            updateHeartsDisplay();
+            updateCoinDisplays();
+            document.getElementById('scoreDisplay').innerText = score;
+
+            for (let i = 0; i < 75; i++) {
+                particles.push({
+                    x: activeBoss.x,
+                    y: activeBoss.y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    size: Math.random() * 6 + 3,
+                    color: activeBoss.color,
+                    life: 1.0
+                });
+            }
+
+            activeBoss = null;
+            bossProjectiles = [];
+            document.getElementById('bossHpContainer').classList.add('hidden');
+            nextBossLevel += 75;
+        }
+
+        function takeDamage() {
+            if (dragon.ghostTimer > 0 || dragon.invincibleTimer > 0 || dragon.titanTimer > 0) return;
+
+            if (dragon.hasShield) {
+                dragon.hasShield = false;
+                dragon.invincibleTimer = 60 + (skillLevels.shield_duration * 15);
+                sound.playCrash();
+                for (let i = 0; i < 20; i++) {
+                    particles.push({
+                        x: dragon.x,
+                        y: dragon.y,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        size: Math.random() * 4 + 2,
+                        color: '#38bdf8',
+                        life: 1.0
+                    });
+                }
+                return;
+            }
+
+            hearts--;
+            updateHeartsDisplay();
+            sound.playCrash();
+
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: dragon.x,
+                    y: dragon.y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 4 + 2,
+                    color: '#ef4444',
+                    life: 1.0
+                });
+            }
+
+            if (hearts <= 0) {
+                triggerGameOver();
+            } else {
+                dragon.invincibleTimer = 90 + (skillLevels.shield_duration * 15);
+                dragon.velocity = config.lift * 0.7;
+                spawnFloatingText(`-1 ❤`, dragon.x, dragon.y - 20, '#f43f5e');
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+
+            const boostedSessionCoins = sessionCoins + (skillLevels.coin_boost * 2);
+            coins += boostedSessionCoins;
+            totalCoinsEarned += boostedSessionCoins;
+            localStorage.setItem('rainbow_flapper_total_coins', totalCoinsEarned);
+            updateCoinDisplays();
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('rainbow_flapper_highscore', highScore);
+            }
+
+            checkAchievementProgress();
+
+            for (let i = 0; i < 35; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 1;
+                particles.push({
+                    x: dragon.x,
+                    y: dragon.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 5 + 3,
+                    color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                    life: 1.0
+                });
+            }
+
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalCoins').innerText = `+${boostedSessionCoins} 🪙`;
+            document.getElementById('finalHighScore').innerText = highScore;
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('highScoreDisplay').innerText = highScore;
+            document.getElementById('activePowerupDisplay').classList.add('hidden');
+            document.getElementById('surgeBanner').classList.add('hidden');
+            document.getElementById('bossHpContainer').classList.add('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
+            }, 400);
+        }
+
+        function triggerWormholeJump() {
+            spawnFloatingText('🌀 WORMHOLE WARP!', dragon.x, dragon.y - 20, '#8b5cf6');
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x: dragon.x,
+                    y: dragon.y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 5 + 2,
+                    color: '#a855f7',
+                    life: 1.0
+                });
+            }
+
+            let targetPortal = portals.find(p => !p.passed && p.x > dragon.x);
+            if (targetPortal) {
+                dragon.y = targetPortal.top + targetPortal.gap / 2;
+                dragon.velocity = 0;
+            } else {
+                dragon.y = canvas.height / 2;
+                dragon.velocity = 0;
+            }
+            dragon.invincibleTimer = 60;
+        }
+
+        function triggerLaserBlast() {
+            dragon.laserBeamTimer = 25;
+            const roarBonusDamage = skillLevels.roar_power * 10;
+            spawnFloatingText('💥 LASER BLAST!', dragon.x, dragon.y - 20, '#f97316');
+
+            if (activeBoss) {
+                const totalLaserDmg = 30 + roarBonusDamage;
+                activeBoss.hp -= totalLaserDmg;
+                updateBossHpBar();
+                spawnFloatingText(`-${totalLaserDmg} HP`, activeBoss.x, activeBoss.y - 10, '#f97316');
+            }
+
+            portals.forEach(p => {
+                if (p.x > dragon.x && p.x < dragon.x + 280) {
+                    p.passed = true;
+                    score += 1;
+                    document.getElementById('scoreDisplay').innerText = score;
+                }
+            });
+
+            obstacles = obstacles.filter(obs => !(obs.x > dragon.x && obs.x < dragon.x + 280));
+        }
+
+        function triggerNuke() {
+            sound.playNuke();
+            const roarBonusDamage = skillLevels.roar_power * 15;
+            spawnFloatingText('💣 SCREEN CLEAR NUKE!', dragon.x, dragon.y - 30, '#ef4444');
+
+            if (activeBoss) {
+                const totalNukeDmg = 40 + roarBonusDamage;
+                activeBoss.hp -= totalNukeDmg;
+                updateBossHpBar();
+                bossProjectiles = [];
+            }
+
+            portals.forEach(p => {
+                if (!p.passed) {
+                    p.passed = true;
+                    score += 2;
+                }
+            });
+            document.getElementById('scoreDisplay').innerText = score;
+
+            portals = [];
+            obstacles = [];
+
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    size: Math.random() * 6 + 3,
+                    color: '#ef4444',
+                    life: 1.0
+                });
+            }
+        }
+
+        function triggerCoinStorm() {
+            spawnFloatingText('🪙 COIN STORM!', dragon.x, dragon.y - 20, '#f59e0b');
+            collectibleCoins.forEach(c => {
+                c.x = dragon.x;
+                c.y = dragon.y;
+            });
+        }
+
+        function update() {
+            rainbowHue = (rainbowHue + 3) % 360;
+
+            stars.forEach(star => {
+                star.x -= star.speed;
+                if (star.x < 0) star.x = canvas.width;
+            });
+
+            if (gameState !== 'PLAYING' || isPaused) return;
+
+            if (abilityCooldownFrames > 0) {
+                abilityCooldownFrames--;
+                updateAbilityHUD();
+            }
+
+            if (dragon.invincibleTimer > 0) dragon.invincibleTimer--;
+            if (dragon.scoreMultiplierTimer > 0) dragon.scoreMultiplierTimer--;
+            if (dragon.slowMotionTimer > 0) dragon.slowMotionTimer--;
+            if (dragon.magnetTimer > 0) dragon.magnetTimer--;
+            if (dragon.laserBeamTimer > 0) dragon.laserBeamTimer--;
+            if (dragon.freezeTimer > 0) dragon.freezeTimer--;
+            if (dragon.titanTimer > 0) {
+                dragon.titanTimer--;
+                dragon.radius = dragon.baseRadius * 2.2;
+            } else if (dragon.miniTimer > 0) {
+                dragon.miniTimer--;
+                dragon.radius = dragon.baseRadius * 0.55;
+            } else {
+                dragon.radius = dragon.baseRadius;
+            }
+            if (dragon.ghostTimer > 0) dragon.ghostTimer--;
+
+            const activeUI = document.getElementById('activePowerupDisplay');
+            const shieldDurationBonus = skillLevels.shield_duration * 60;
+
+            if (dragon.titanTimer > 0) {
+                activeUI.innerText = `👑 TITAN MODE (${Math.ceil(dragon.titanTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.freezeTimer > 0) {
+                activeUI.innerText = activeBoss ? `🧊 BOSS FROZEN (${Math.ceil(dragon.freezeTimer / 60)}s)` : `🧊 PORTAL FREEZE (${Math.ceil(dragon.freezeTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.laserBeamTimer > 0) {
+                activeUI.innerText = `💥 LASER BLAST!`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.ghostTimer > 0) {
+                activeUI.innerText = `👻 GHOST (${Math.ceil(dragon.ghostTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.hasShield) {
+                activeUI.innerText = '🛡️ SHIELD ACTIVE';
+                activeUI.classList.remove('hidden');
+            } else if (dragon.miniTimer > 0) {
+                activeUI.innerText = `🔍 MINI DRAGON (${Math.ceil(dragon.miniTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.magnetTimer > 0) {
+                activeUI.innerText = `🧲 MAGNET (${Math.ceil(dragon.magnetTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.scoreMultiplierTimer > 0) {
+                activeUI.innerText = `⭐ 2X SCORE (${Math.ceil(dragon.scoreMultiplierTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else if (dragon.slowMotionTimer > 0) {
+                activeUI.innerText = `⏳ SLOW MOTION (${Math.ceil(dragon.slowMotionTimer / 60)}s)`;
+                activeUI.classList.remove('hidden');
+            } else {
+                activeUI.classList.add('hidden');
+            }
+
+            if (score >= nextBossLevel && !activeBoss) {
+                spawnBoss();
+            }
+
+            if (config.portalSurgeEnabled) {
+                if (score > 0 && score % 10 === 0 && surgeTimer === 0 && !activeBoss) {
+                    surgeTimer = 180;
+                }
+
+                if (surgeTimer > 0 && !activeBoss) {
+                    surgeTimer--;
+                    document.getElementById('surgeBanner').classList.remove('hidden');
+                } else {
+                    document.getElementById('surgeBanner').classList.add('hidden');
+                }
+            } else {
+                surgeTimer = 0;
+                document.getElementById('surgeBanner').classList.add('hidden');
+            }
+
+            let currentSpeed = dragon.slowMotionTimer > 0 ? config.speed * 0.5 : config.speed;
+            
+            if (dragon.freezeTimer > 0) {
+                if (!activeBoss) {
+                    currentSpeed *= 0.15;
+                }
+            }
+
+            if (surgeTimer > 0) currentSpeed *= 1.35;
+
+            dragon.velocity += config.gravity;
+            dragon.y += dragon.velocity;
+            dragon.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, dragon.velocity * 0.08));
+
+            trail.push({ 
+                x: dragon.x - 8, 
+                y: dragon.y, 
+                hue: rainbowHue, 
+                size: dragon.radius * 0.9,
+                rot: Math.random() * Math.PI * 2,
+                offsetY: (Math.random() - 0.5) * 6
+            });
+            if (trail.length > 20) trail.shift();
+
+            if (dragon.y + dragon.radius >= canvas.height) {
+                dragon.y = canvas.height - dragon.radius;
+                takeDamage();
+            } else if (dragon.y - dragon.radius <= 0) {
+                dragon.y = dragon.radius;
+                takeDamage();
+            }
+
+            frameCount++;
+
+            if (activeBoss) {
+                if (dragon.freezeTimer === 0) {
+                    if (activeBoss.x > activeBoss.targetX) {
+                        activeBoss.x -= 2;
+                    } else {
+                        activeBoss.moveAngle += 0.05;
+                        
+                        if (activeBoss.type === 'teleport') {
+                            activeBoss.teleportTimer++;
+                            if (activeBoss.teleportTimer > 150) {
+                                activeBoss.teleportTimer = 0;
+                                activeBoss.y = Math.random() * (canvas.height - 200) + 100;
+                                spawnFloatingText('⚡ TELEPORT!', activeBoss.x, activeBoss.y - 20, '#06b6d4');
+                            }
+                        }
+
+                        activeBoss.y = (canvas.height / 2) + Math.sin(activeBoss.moveAngle) * 110;
+
+                        activeBoss.attackCooldown++;
+                        if (activeBoss.attackCooldown >= 60) {
+                            activeBoss.attackCooldown = 0;
+                            
+                            const angleToDragon = Math.atan2(dragon.y - activeBoss.y, dragon.x - activeBoss.x);
+
+                            if (activeBoss.type === 'triple') {
+                                for (let offset = -0.3; offset <= 0.3; offset += 0.3) {
+                                    bossProjectiles.push({
+                                        x: activeBoss.x - activeBoss.radius,
+                                        y: activeBoss.y,
+                                        radius: 7,
+                                        vx: Math.cos(angleToDragon + offset) * 5.0,
+                                        vy: Math.sin(angleToDragon + offset) * 5.0
+                                    });
+                                }
+                            } else if (activeBoss.type === 'bullet_hell') {
+                                for (let i = 0; i < 4; i++) {
+                                    const spreadAngle = angleToDragon + (i - 1.5) * 0.25;
+                                    bossProjectiles.push({
+                                        x: activeBoss.x - activeBoss.radius,
+                                        y: activeBoss.y,
+                                        radius: 7,
+                                        vx: Math.cos(spreadAngle) * 4.5,
+                                        vy: Math.sin(spreadAngle) * 4.5
+                                    });
+                                }
+                            } else {
+                                bossProjectiles.push({
+                                    x: activeBoss.x - activeBoss.radius,
+                                    y: activeBoss.y,
+                                    radius: 8,
+                                    vx: Math.cos(angleToDragon) * 4.5,
+                                    vy: Math.sin(angleToDragon) * 4.5
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (Math.hypot(dragon.x - activeBoss.x, dragon.y - activeBoss.y) < dragon.radius + activeBoss.radius) {
+                    takeDamage();
+                }
+
+                if (frameCount % 120 === 0 && dragon.freezeTimer === 0) {
+                    const bossPowerupPool = [
+                        { type: 'shield', symbol: '🛡️', color: '#38bdf8' },
+                        { type: 'heart', symbol: '❤️', color: '#f43f5e' },
+                        { type: 'laser', symbol: '💥', color: '#f97316' },
+                        { type: 'freeze', symbol: '🧊', color: '#06b6d4' }
+                    ];
+                    const powInfo = bossPowerupPool[Math.floor(Math.random() * bossPowerupPool.length)];
+                    powerups.push({
+                        x: canvas.width + 20,
+                        y: Math.random() * (canvas.height - 150) + 75,
+                        radius: 14,
+                        ...powInfo
+                    });
+                }
+
+                if (frameCount % 90 === 0 && dragon.freezeTimer === 0) {
+                    collectibleCoins.push({
+                        x: canvas.width + 20,
+                        y: Math.random() * (canvas.height - 150) + 75,
+                        radius: 12,
+                        pulse: 0
+                    });
+                }
+            }
+
+            for (let i = playerProjectiles.length - 1; i >= 0; i--) {
+                let proj = playerProjectiles[i];
+                proj.x += proj.vx;
+                proj.y += proj.vy;
+
+                if (activeBoss && Math.hypot(proj.x - activeBoss.x, proj.y - activeBoss.y) < proj.radius + activeBoss.radius) {
+                    sound.playBossHit();
+                    activeBoss.hp -= 6;
+                    updateBossHpBar();
+                    spawnFloatingText('-6', activeBoss.x + (Math.random() - 0.5) * 30, activeBoss.y + (Math.random() - 0.5) * 30, '#f59e0b');
+
+                    for (let p = 0; p < 8; p++) {
+                        particles.push({
+                            x: proj.x, y: proj.y,
+                            vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+                            size: Math.random() * 3 + 2, color: '#f59e0b', life: 1.0
+                        });
+                    }
+
+                    playerProjectiles.splice(i, 1);
+
+                    if (activeBoss.hp <= 0) {
+                        defeatBoss();
+                    }
+                    continue;
+                }
+
+                if (proj.x > canvas.width + 20) playerProjectiles.splice(i, 1);
+            }
+
+            for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+                let bp = bossProjectiles[i];
+                bp.x += bp.vx;
+                bp.y += bp.vy;
+
+                if (Math.hypot(dragon.x - bp.x, dragon.y - bp.y) < dragon.radius + bp.radius) {
+                    takeDamage();
+                    bossProjectiles.splice(i, 1);
+                    continue;
+                }
+
+                if (bp.x < -20 || bp.y < -20 || bp.y > canvas.height + 20) {
+                    bossProjectiles.splice(i, 1);
+                }
+            }
+
+            if (!activeBoss) {
+                const spawnInterval = surgeTimer > 0 ? Math.floor(config.spawnRate * 0.7) : config.spawnRate;
+                if (frameCount % spawnInterval === 0) {
+                    const randomGap = Math.floor(Math.random() * (config.maxGap - config.minGap + 1)) + config.minGap;
+                    const minHeight = 60;
+                    const maxHeight = canvas.height - randomGap - minHeight;
+                    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+
+                    const isMoving = config.moveSpeed > 0 && Math.random() < 0.6;
+                    const moveSpeed = isMoving ? (Math.random() > 0.5 ? 1 : -1) * (config.moveSpeed + Math.random() * 0.4) : 0;
+
+                    portals.push({
+                        x: canvas.width,
+                        top: topHeight,
+                        bottom: canvas.height - topHeight - randomGap,
+                        gap: randomGap,
+                        width: 44,
+                        passed: false,
+                        hue: (rainbowHue + 120) % 360,
+                        vy: moveSpeed,
+                        minTop: 40,
+                        maxTop: canvas.height - randomGap - 40
+                    });
+
+                    if (Math.random() < 0.75) {
+                        collectibleCoins.push({
+                            x: canvas.width + 22,
+                            y: topHeight + randomGap / 2 + (Math.random() - 0.5) * 40,
+                            radius: 12,
+                            pulse: 0
+                        });
+                    }
+
+                    if (Math.random() < 0.45) {
+                        const powerupInfo = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+                        powerups.push({
+                            x: canvas.width + 22,
+                            y: topHeight + randomGap / 2,
+                            radius: 12,
+                            ...powerupInfo
+                        });
+                    }
+
+                    if (Math.random() < config.obstacleChance) {
+                        obstacles.push({
+                            x: canvas.width + 120,
+                            y: topHeight + randomGap / 2 + (Math.random() - 0.5) * (randomGap - 50),
+                            radius: 10,
+                            vy: (Math.random() - 0.5) * 2.0,
+                            baseY: topHeight + randomGap / 2
+                        });
+                    }
+                }
+            }
+
+            for (let i = portals.length - 1; i >= 0; i--) {
+                let p = portals[i];
+                p.x -= currentSpeed;
+
+                if (p.vy !== 0 && dragon.freezeTimer === 0) {
+                    p.top += p.vy;
+                    if (p.top < p.minTop || p.top > p.maxTop) {
+                        p.vy *= -1;
+                    }
+                    p.bottom = canvas.height - p.top - p.gap;
+                }
+
+                const dragonLeft = dragon.x - dragon.radius + 3;
+                const dragonRight = dragon.x + dragon.radius - 3;
+                const dragonTop = dragon.y - dragon.radius + 3;
+                const dragonBottom = dragon.y + dragon.radius - 3;
+
+                if (dragonRight > p.x && dragonLeft < p.x + p.width) {
+                    if (dragon.titanTimer > 0) {
+                        p.passed = true;
+                        score += 2;
+                        document.getElementById('scoreDisplay').innerText = score;
+                        spawnFloatingText('💥 SMASH!', dragon.x, dragon.y - 15, '#eab308');
+                        portals.splice(i, 1);
+                        continue;
+                    } else if (dragonTop < p.top || dragonBottom > canvas.height - p.bottom) {
+                        takeDamage();
+                    }
+                }
+
+                if (!p.passed && p.x + p.width < dragon.x) {
+                    p.passed = true;
+                    const gainedScore = ((dragon.scoreMultiplierTimer > 0) ? 2 : 1) * combo;
+                    score += gainedScore;
+                    sound.playScore();
+                    spawnFloatingText(`+${gainedScore}${combo > 1 ? ` (${combo}x)` : ''}`, dragon.x, dragon.y - 20, '#38bdf8');
+                    if (combo < 5) combo++;
+                    document.getElementById('scoreDisplay').innerText = score;
+
+                    checkQuestProgress('score_points', gainedScore);
+                    checkAchievementProgress();
+                }
+
+                if (p.x + p.width < 0) portals.splice(i, 1);
+            }
+
+            const baseMagnetRadius = skillLevels.magnet_range > 0 ? 80 + (skillLevels.magnet_range * 40) : 0;
+            const magnetPullRadius = dragon.magnetTimer > 0 ? 240 : (activeBoss ? 60 : baseMagnetRadius);
+
+            for (let i = collectibleCoins.length - 1; i >= 0; i--) {
+                let c = collectibleCoins[i];
+                c.x -= currentSpeed;
+                c.pulse += 0.1;
+
+                const distToDragon = Math.hypot(dragon.x - c.x, dragon.y - c.y);
+                if (magnetPullRadius > 0 && (distToDragon < magnetPullRadius || dragon.magnetTimer > 0)) {
+                    c.x += (dragon.x - c.x) * 0.22;
+                    c.y += (dragon.y - c.y) * 0.22;
+                }
+
+                if (Math.hypot(dragon.x - c.x, dragon.y - c.y) < dragon.radius + c.radius + 15) {
+                    sound.playCoin();
+                    sessionCoins += 2; 
+                    coins += 2;
+                    totalCoinsEarned += 2;
+                    localStorage.setItem('rainbow_flapper_total_coins', totalCoinsEarned);
+                    updateCoinDisplays();
+                    spawnFloatingText('+2 🪙', c.x, c.y - 10, '#f59e0b');
+
+                    checkQuestProgress('collect_coins', 2);
+                    checkAchievementProgress();
+
+                    collectibleCoins.splice(i, 1);
+                    continue;
+                }
+
+                if (c.x + c.radius < 0) collectibleCoins.splice(i, 1);
+            }
+
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let pow = powerups[i];
+                pow.x -= currentSpeed;
+
+                const distToDragon = Math.hypot(dragon.x - pow.x, dragon.y - pow.y);
+                if (magnetPullRadius > 0 && (distToDragon < magnetPullRadius || dragon.magnetTimer > 0)) {
+                    pow.x += (dragon.x - pow.x) * 0.18;
+                    pow.y += (dragon.y - pow.y) * 0.18;
+                }
+
+                if (Math.hypot(dragon.x - pow.x, dragon.y - pow.y) < dragon.radius + pow.radius + 10) {
+                    sound.playPowerup();
+
+                    const extendedDuration = shieldDurationBonus;
+
+                    if (pow.type === 'shield') dragon.hasShield = true;
+                    else if (pow.type === 'multiplier') dragon.scoreMultiplierTimer = 420 + extendedDuration;
+                    else if (pow.type === 'slow') dragon.slowMotionTimer = 420 + extendedDuration;
+                    else if (pow.type === 'magnet') dragon.magnetTimer = 420 + extendedDuration;
+                    else if (pow.type === 'mini') dragon.miniTimer = 420 + extendedDuration;
+                    else if (pow.type === 'ghost') dragon.ghostTimer = 420 + extendedDuration;
+                    else if (pow.type === 'heart') {
+                        if (hearts < 5) {
+                            hearts++;
+                            updateHeartsDisplay();
+                            spawnFloatingText('+1 ❤', pow.x, pow.y - 15, '#f43f5e');
+                        } else spawnFloatingText('MAX ❤️', pow.x, pow.y - 15, '#f43f5e');
+                    }
+                    else if (pow.type === 'teleport') triggerWormholeJump();
+                    else if (pow.type === 'laser') triggerLaserBlast();
+                    else if (pow.type === 'nuke') triggerNuke();
+                    else if (pow.type === 'freeze') dragon.freezeTimer = 360 + extendedDuration;
+                    else if (pow.type === 'titan') dragon.titanTimer = 420 + extendedDuration;
+                    else if (pow.type === 'coin_storm') triggerCoinStorm();
+
+                    if (!['heart', 'teleport', 'laser', 'nuke', 'coin_storm'].includes(pow.type)) {
+                        spawnFloatingText(pow.symbol, pow.x, pow.y - 15, pow.color);
+                    }
+
+                    for (let p = 0; p < 12; p++) {
+                        particles.push({
+                            x: pow.x,
+                            y: pow.y,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4,
+                            size: Math.random() * 3 + 2,
+                            color: pow.color,
+                            life: 1.0
+                        });
+                    }
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                if (pow.x + pow.radius < 0) powerups.splice(i, 1);
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= currentSpeed * 1.2;
+                if (dragon.freezeTimer === 0) obs.y += obs.vy;
+
+                if (Math.abs(obs.y - obs.baseY) > 25) obs.vy *= -1;
+
+                if (Math.hypot(dragon.x - obs.x, dragon.y - obs.y) < dragon.radius + obs.radius) {
+                    if (dragon.titanTimer > 0) {
+                        spawnFloatingText('💥 CRUSH!', obs.x, obs.y, '#eab308');
+                        obstacles.splice(i, 1);
+                        continue;
+                    } else {
+                        takeDamage();
+                    }
+                }
+
+                if (obs.x + obs.radius < 0) obstacles.splice(i, 1);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life -= 0.025;
+                if (pt.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = floatTexts.length - 1; i >= 0; i--) {
+                let ft = floatTexts[i];
+                ft.y -= 1;
+                ft.alpha -= 0.02;
+                if (ft.alpha <= 0) floatTexts.splice(i, 1);
+            }
+        }
+
+        function drawLaserPortal(p) {
+            const centerX = p.x + p.width / 2;
+            drawLaserBeam(centerX, 0, p.top, p.hue);
+            drawLaserBeam(centerX, canvas.height - p.bottom, canvas.height, p.hue);
+            drawPortalRing(centerX, p.top, p.hue);
+            drawPortalRing(centerX, canvas.height - p.bottom, p.hue);
+        }
+
+        function drawLaserBeam(x, startY, endY, hue) {
+            const length = endY - startY;
+            if (length <= 0) return;
+
+            ctx.save();
+            ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#38bdf8' : `hsl(${hue}, 100%, 50%)`;
+            ctx.lineWidth = 26;
+            ctx.globalAlpha = 0.35;
+            ctx.beginPath();
+            ctx.moveTo(x, startY);
+            ctx.lineTo(x, endY);
+            ctx.stroke();
+
+            ctx.strokeStyle = `hsl(${(hue + 40) % 360}, 100%, 70%)`;
+            ctx.lineWidth = 14;
+            ctx.globalAlpha = 0.7;
+            ctx.stroke();
+
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#ffffff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5 + Math.sin(frameCount * 0.2) * 2;
+            ctx.globalAlpha = 1.0;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawPortalRing(x, y, hue) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+            ctx.shadowBlur = 12;
+
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 24, 8, frameCount * 0.05, 0, Math.PI * 2);
+            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#93c5fd' : `hsl(${hue}, 100%, 75%)`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            ctx.fillStyle = `hsl(${(hue + 60) % 360}, 100%, 15%)`;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 20, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawTrailFX() {
+            for (let i = 0; i < trail.length; i++) {
+                const pt = trail[i];
+                const progress = i / trail.length;
+                const posX = pt.x - (trail.length - i) * 1.5;
+
+                ctx.save();
+                if (activeTrail === 'rainbow') {
+                    ctx.beginPath();
+                    ctx.arc(posX, pt.y, pt.size * progress, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${(pt.hue + i * 10) % 360}, 100%, 60%, ${progress * 0.6})`;
+                    ctx.fill();
+                } else if (activeTrail === 'stars') {
+                    ctx.fillStyle = `rgba(250, 204, 21, ${progress * 0.8})`;
+                    ctx.font = `${Math.max(8, Math.floor(pt.size * progress * 1.2))}px Outfit`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('⭐', posX, pt.y + pt.offsetY);
+                } else if (activeTrail === 'fire') {
+                    ctx.beginPath();
+                    ctx.arc(posX, pt.y + pt.offsetY, pt.size * progress * 1.1, 0, Math.PI * 2);
+                    const isFire = i > trail.length / 2;
+                    ctx.fillStyle = isFire 
+                        ? `rgba(249, 115, 22, ${progress * 0.8})` 
+                        : `rgba(100, 116, 139, ${progress * 0.4})`;
+                    ctx.fill();
+                } else if (activeTrail === 'neon_grid') {
+                    ctx.strokeStyle = `rgba(6, 182, 212, ${progress * 0.7})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(posX - 4, pt.y - 4, 8, 8);
+                } else if (activeTrail === 'bubble_pop') {
+                    ctx.strokeStyle = `rgba(56, 189, 248, ${progress * 0.8})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(posX, pt.y + pt.offsetY, pt.size * progress * 0.9, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (activeTrail === 'hearts_trail') {
+                    ctx.fillStyle = `rgba(244, 63, 94, ${progress * 0.9})`;
+                    ctx.font = `${Math.max(8, Math.floor(pt.size * progress * 1.2))}px Outfit`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💖', posX, pt.y + pt.offsetY);
+                } else if (activeTrail === 'matrix_code') {
+                    ctx.fillStyle = `rgba(16, 185, 129, ${progress * 0.9})`;
+                    ctx.font = `bold ${Math.max(8, Math.floor(pt.size * progress))}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(Math.random() > 0.5 ? '1' : '0', posX, pt.y + pt.offsetY);
+                } else if (activeTrail === 'lightning_bolt') {
+                    ctx.fillStyle = `rgba(250, 204, 21, ${progress * 0.9})`;
+                    ctx.font = `${Math.max(9, Math.floor(pt.size * progress * 1.3))}px Outfit`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('⚡', posX, pt.y + pt.offsetY);
+                } else if (activeTrail === 'golden_sparkles') {
+                    ctx.fillStyle = `rgba(245, 158, 11, ${progress * 0.9})`;
+                    ctx.font = `${Math.max(8, Math.floor(pt.size * progress * 1.2))}px Outfit`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🌟', posX, pt.y + pt.offsetY);
+                }
+                ctx.restore();
+            }
+        }
+
+        function draw() {
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGrad.addColorStop(0, "#0b1329");
+            bgGrad.addColorStop(1, "#1d2a4a");
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#ffffff";
+            stars.forEach(star => {
+                ctx.globalAlpha = star.alpha;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            drawTrailFX();
+
+            portals.forEach(p => drawLaserPortal(p));
+
+            collectibleCoins.forEach(c => {
+                ctx.save();
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.radius + Math.sin(c.pulse) * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.font = '10px Outfit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#78350f';
+                ctx.fillText('🪙', c.x, c.y);
+            });
+
+            powerups.forEach(pow => {
+                ctx.save();
+                ctx.shadowColor = pow.color;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = pow.color;
+                ctx.beginPath();
+                ctx.arc(pow.x, pow.y, pow.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.font = '12px Outfit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pow.symbol, pow.x, pow.y);
+            });
+
+            obstacles.forEach(obs => {
+                ctx.save();
+                ctx.shadowColor = '#f43f5e';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.font = '10px Outfit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💣', obs.x, obs.y);
+            });
+
+            if (activeBoss) {
+                ctx.save();
+                ctx.shadowColor = dragon.freezeTimer > 0 ? '#38bdf8' : activeBoss.color;
+                ctx.shadowBlur = dragon.freezeTimer > 0 ? 30 : 25;
+
+                ctx.fillStyle = dragon.freezeTimer > 0 ? '#93c5fd' : activeBoss.color;
+                ctx.beginPath();
+                ctx.arc(activeBoss.x, activeBoss.y, activeBoss.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = dragon.freezeTimer > 0 ? '#e0f2fe' : '#f59e0b';
+                ctx.lineWidth = 5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(activeBoss.x - 12, activeBoss.y - 10, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(activeBoss.x - 14, activeBoss.y - 10, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = activeBoss.secondaryColor;
+                ctx.beginPath();
+                ctx.moveTo(activeBoss.x - 12, activeBoss.y - activeBoss.radius);
+                ctx.lineTo(activeBoss.x - 24, activeBoss.y - activeBoss.radius - 22);
+                ctx.lineTo(activeBoss.x, activeBoss.y - activeBoss.radius + 6);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            playerProjectiles.forEach(proj => {
+                ctx.save();
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            bossProjectiles.forEach(bp => {
+                ctx.save();
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(bp.x, bp.y, bp.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            if (dragon.laserBeamTimer > 0) {
+                ctx.save();
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = '#ffed4a';
+                ctx.lineWidth = 18;
+                ctx.beginPath();
+                ctx.moveTo(dragon.x, dragon.y);
+                ctx.lineTo(dragon.x + 300, dragon.y);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 6;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            particles.forEach(pt => {
+                ctx.globalAlpha = pt.life;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            floatTexts.forEach(ft => {
+                ctx.globalAlpha = ft.alpha;
+                ctx.font = 'bold 13px Outfit, sans-serif';
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+            });
+            ctx.globalAlpha = 1.0;
+
+            if (gameState === 'PLAYING' || gameState === 'START') {
+                ctx.save();
+                ctx.translate(dragon.x, dragon.y);
+                ctx.rotate(dragon.rotation);
+
+                if (dragon.invincibleTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) {
+                    ctx.globalAlpha = 0.3;
+                } else if (dragon.ghostTimer > 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+
+                if (dragon.hasShield) {
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, dragon.radius + 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                if (dragon.titanTimer > 0) {
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, dragon.radius + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                const currentSkinObj = SKINS.find(s => s.id === activeSkin) || SKINS[0];
+                ctx.shadowColor = currentSkinObj.primary;
+                ctx.shadowBlur = 12;
+
+                let bodyGrad;
+                if (activeSkin === 'rainbow') {
+                    bodyGrad = ctx.createLinearGradient(-dragon.radius, -dragon.radius, dragon.radius, dragon.radius);
+                    bodyGrad.addColorStop(0, `hsl(${rainbowHue}, 100%, 60%)`);
+                    bodyGrad.addColorStop(0.5, `hsl(${(rainbowHue + 120) % 360}, 100%, 60%)`);
+                    bodyGrad.addColorStop(1, `hsl(${(rainbowHue + 240) % 360}, 100%, 60%)`);
+                } else {
+                    bodyGrad = currentSkinObj.primary;
+                }
+
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, dragon.radius * 1.1, dragon.radius * 0.85, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.moveTo(-dragon.radius * 0.9, 0);
+                ctx.lineTo(-dragon.radius * 1.5, -dragon.radius * 0.3);
+                ctx.lineTo(-dragon.radius * 1.3, dragon.radius * 0.3);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = "#fbbf24";
+                ctx.beginPath();
+                ctx.moveTo(dragon.radius * 0.1, -dragon.radius * 0.6);
+                ctx.lineTo(dragon.radius * 0.3, -dragon.radius * 1.3);
+                ctx.lineTo(dragon.radius * 0.5, -dragon.radius * 0.5);
+                ctx.closePath();
+                ctx.fill();
+
+                const wingY = Math.sin(frameCount * 0.3) * (dragon.radius * 0.6);
+                ctx.fillStyle = activeSkin === 'magma_beast' ? '#b91c1c' : '#f43f5e';
+                ctx.beginPath();
+                ctx.moveTo(-dragon.radius * 0.2, -dragon.radius * 0.2);
+                ctx.lineTo(-dragon.radius * 0.6, -dragon.radius * 1.2 + wingY);
+                ctx.lineTo(dragon.radius * 0.2, -dragon.radius * 0.8 + wingY);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(dragon.radius * 0.45, -dragon.radius * 0.25, dragon.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#dc2626";
+                ctx.beginPath();
+                ctx.arc(dragon.radius * 0.52, -dragon.radius * 0.25, dragon.radius * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = currentSkinObj.primary;
+                ctx.beginPath();
+                ctx.moveTo(dragon.radius * 0.8, -dragon.radius * 0.2);
+                ctx.lineTo(dragon.radius * 1.2, 0);
+                ctx.lineTo(dragon.radius * 0.8, dragon.radius * 0.3);
+                ctx.closePath();
+                ctx.fill();
+
+                if (Math.floor(frameCount / 6) % 2 === 0) {
+                    ctx.fillStyle = "#ef4444";
+                    ctx.beginPath();
+                    ctx.arc(dragon.radius * 1.45, 0, dragon.radius * 0.25, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function openShop() {
+            wasPlayingBeforeShop = (gameState === 'PLAYING' && !isPaused);
+            if (gameState === 'PLAYING' && !isPaused) {
+                isPaused = true;
+                document.getElementById('pauseBtnIcon').innerText = '▶';
+                document.getElementById('pauseOverlay').classList.add('hidden');
+            }
+            switchShopTab('skins');
+            document.getElementById('shopOverlay').classList.remove('hidden');
+        }
+
+        function closeShop() {
+            document.getElementById('shopOverlay').classList.add('hidden');
+            if (wasPlayingBeforeShop) {
+                isPaused = false;
+                document.getElementById('pauseBtnIcon').innerText = '⏸';
+            } else {
+                wasPlayingBeforeShop = false;
+            }
+        }
+
+        function openQuests() {
+            updateQuestsUI();
+            document.getElementById('questsOverlay').classList.remove('hidden');
+        }
+
+        function closeQuests() {
+            document.getElementById('questsOverlay').classList.add('hidden');
+        }
+
+        function openAchievements() {
+            updateAchievementsUI();
+            document.getElementById('achievementsOverlay').classList.remove('hidden');
+        }
+
+        function closeAchievements() {
+            document.getElementById('achievementsOverlay').classList.add('hidden');
+        }
+
+        function switchShopTab(tab) {
+            activeShopTab = tab;
+            const skinsTabBtn = document.getElementById('tabSkinsBtn');
+            const trailsTabBtn = document.getElementById('tabTrailsBtn');
+            const skillsTabBtn = document.getElementById('tabSkillsBtn');
+            
+            const skinsContainer = document.getElementById('skinsContainer');
+            const trailsContainer = document.getElementById('trailsContainer');
+            const skillsContainer = document.getElementById('skillsContainer');
+
+            skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+            trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+            skillsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+
+            skinsContainer.classList.add('hidden');
+            trailsContainer.classList.add('hidden');
+            skillsContainer.classList.add('hidden');
+
+            if (tab === 'skins') {
+                skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
+                skinsContainer.classList.remove('hidden');
+            } else if (tab === 'trails') {
+                trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
+                trailsContainer.classList.remove('hidden');
+            } else if (tab === 'skills') {
+                skillsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
+                skillsContainer.classList.remove('hidden');
+            }
+            updateShopUI();
+        }
+
+        function updateShopUI() {
+            const skinsContainer = document.getElementById('skinsContainer');
+            skinsContainer.innerHTML = '';
+            SKINS.forEach(skin => {
+                const isUnlocked = unlockedSkins.includes(skin.id);
+                const isActive = activeSkin === skin.id;
+                const skinDiv = document.createElement('div');
+                skinDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let actionButtonHtml = '';
+                if (isActive) {
+                    actionButtonHtml = `<span class="text-xs font-bold text-emerald-400">EQUIPPED</span>`;
+                } else if (isUnlocked) {
+                    actionButtonHtml = `<button type="button" onclick="equipSkin('${skin.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>`;
+                } else {
+                    if (skin.adUnlock) {
+                        actionButtonHtml = `<button type="button" onclick="openAdModal('skin', '${skin.id}')" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-400 text-white text-xs font-black pulse-btn">📺 WATCH AD</button>`;
+                    } else {
+                        actionButtonHtml = `<button type="button" onclick="buySkin('${skin.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 border border-amber-400 text-slate-950 text-xs font-black pulse-btn">🪙 ${skin.cost}</button>`;
+                    }
+                }
+
+                skinDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full" style="background: ${skin.primary}"></div>
+                        <div>
+                            <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                ${skin.name} <span class="text-[10px] text-amber-400 font-semibold">(${skin.abilityName})</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400">${isUnlocked ? 'Unlocked' : (skin.adUnlock ? 'Free via Ad' : `🪙 ${skin.cost} Coins`)}</div>
+                        </div>
+                    </div>
+                    ${actionButtonHtml}
+                `;
+                skinsContainer.appendChild(skinDiv);
+            });
+
+            const trailsContainer = document.getElementById('trailsContainer');
+            trailsContainer.innerHTML = '';
+            TRAILS.forEach(tr => {
+                const isUnlocked = unlockedTrails.includes(tr.id);
+                const isActive = activeTrail === tr.id;
+                const trailDiv = document.createElement('div');
+                trailDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let actionButtonHtml = '';
+                if (isActive) {
+                    actionButtonHtml = `<span class="text-xs font-bold text-emerald-400">EQUIPPED</span>`;
+                } else if (isUnlocked) {
+                    actionButtonHtml = `<button type="button" onclick="equipTrail('${tr.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>`;
+                } else {
+                    if (tr.adUnlock) {
+                        actionButtonHtml = `<button type="button" onclick="openAdModal('trail', '${tr.id}')" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-400 text-white text-xs font-black pulse-btn">📺 WATCH AD</button>`;
+                    } else {
+                        actionButtonHtml = `<button type="button" onclick="buyTrail('${tr.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 border border-amber-400 text-slate-950 text-xs font-black pulse-btn">🪙 ${tr.cost}</button>`;
+                    }
+                }
+
+                trailDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs border border-white/10">${tr.preview}</div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${tr.name}</div>
+                            <div class="text-[10px] text-slate-400">${isUnlocked ? 'Unlocked' : (tr.adUnlock ? 'Free via Ad' : `🪙 ${tr.cost} Coins`)}</div>
+                        </div>
+                    </div>
+                    ${actionButtonHtml}
+                `;
+                trailsContainer.appendChild(trailDiv);
+            });
+
+            const skillsContainer = document.getElementById('skillsContainer');
+            skillsContainer.innerHTML = '';
+            SKILLS_UPGRADES.forEach(skill => {
+                const currentLevel = skillLevels[skill.id] || 0;
+                const isMax = currentLevel >= skill.maxLevel;
+                const upgradeCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLevel));
+
+                const skillDiv = document.createElement('div');
+                skillDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let upgradeButtonHtml = '';
+                if (isMax) {
+                    upgradeButtonHtml = `<span class="text-xs font-bold text-amber-400">MAX LVL</span>`;
+                } else {
+                    upgradeButtonHtml = `<button type="button" onclick="upgradeSkill('${skill.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 border border-amber-400 text-slate-950 text-xs font-black pulse-btn">🪙 ${upgradeCost}</button>`;
+                }
+
+                skillDiv.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base border border-amber-500/30">${skill.icon}</div>
+                        <div>
+                            <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                ${skill.name} <span class="text-[10px] text-cyan-400 font-semibold">Lvl ${currentLevel}/${skill.maxLevel}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400">${skill.desc}</div>
+                        </div>
+                    </div>
+                    ${upgradeButtonHtml}
+                `;
+                skillsContainer.appendChild(skillDiv);
+            });
+
+            updateCoinDisplays();
+        }
+
+        function updateQuestsUI() {
+            const container = document.getElementById('questsContainer');
+            container.innerHTML = '';
+            dailyQuests.forEach(q => {
+                const questDiv = document.createElement('div');
+                questDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let statusHtml = '';
+                if (q.completed) {
+                    statusHtml = `<span class="text-xs font-bold text-emerald-400">COMPLETED (+${q.reward} 🪙)</span>`;
+                } else {
+                    statusHtml = `
+                        <div class="text-right">
+                            <div class="text-[11px] font-bold text-purple-300">${q.progress} / ${q.target}</div>
+                            <div class="text-[10px] text-amber-400 font-bold">+${q.reward} 🪙</div>
+                        </div>
+                    `;
+                }
+
+                questDiv.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-purple-500/25 flex items-center justify-center text-base border border-purple-400/40">📜</div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${q.title}</div>
+                            <div class="text-[10px] text-slate-400">${q.desc}</div>
+                        </div>
+                    </div>
+                    ${statusHtml}
+                `;
+                container.appendChild(questDiv);
+            });
+        }
+
+        function updateAchievementsUI() {
+            const container = document.getElementById('achievementsContainer');
+            container.innerHTML = '';
+            achievements.forEach(ach => {
+                const achDiv = document.createElement('div');
+                achDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let statusHtml = '';
+                if (ach.unlocked) {
+                    statusHtml = `<span class="text-xs font-bold text-cyan-400">UNLOCKED (+${ach.reward} 🪙)</span>`;
+                } else {
+                    statusHtml = `
+                        <div class="text-right">
+                            <div class="text-[11px] font-bold text-slate-300">${ach.progress} / ${ach.target}</div>
+                            <div class="text-[10px] text-amber-400 font-bold">+${ach.reward} 🪙</div>
+                        </div>
+                    `;
+                }
+
+                achDiv.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-cyan-500/25 flex items-center justify-center text-base border border-cyan-400/40">🏆</div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${ach.title}</div>
+                            <div class="text-[10px] text-slate-400">${ach.desc}</div>
+                        </div>
+                    </div>
+                    ${statusHtml}
+                `;
+                container.appendChild(achDiv);
+            });
+        }
+
+        function upgradeSkill(id) {
+            const skill = SKILLS_UPGRADES.find(s => s.id === id);
+            const currentLevel = skillLevels[id] || 0;
+            if (!skill || currentLevel >= skill.maxLevel) return;
+
+            const upgradeCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLevel));
+            if (coins >= upgradeCost) {
+                coins -= upgradeCost;
+                skillLevels[id] = currentLevel + 1;
+                updateShopUI();
+                sound.playPowerup();
+            }
+        }
+
+        function openAdForCoins() {
+            pendingAdItemType = 'coins';
+            pendingAdItemId = null;
+            document.getElementById('adModalTitle').innerText = 'WATCH AD FOR 200 COINS';
+            document.getElementById('adModalDescription').innerText = 'Watch a quick promotional video to instantly earn +200 free coins!';
+            document.getElementById('adProgressBarContainer').classList.add('hidden');
+            document.getElementById('adProgressBar').style.width = '0%';
+            document.getElementById('watchAdBtn').disabled = false;
+            document.getElementById('watchAdBtn').innerText = 'WATCH AD';
+            document.getElementById('adModalOverlay').classList.remove('hidden');
+        }
+
+        function openAdModal(type, id) {
+            pendingAdItemType = type;
+            pendingAdItemId = id;
+            document.getElementById('adModalTitle').innerText = 'WATCH AD TO UNLOCK';
+            document.getElementById('adModalDescription').innerText = 'Watch a quick promotional video to instantly unlock this item for free!';
+            document.getElementById('adProgressBarContainer').classList.add('hidden');
+            document.getElementById('adProgressBar').style.width = '0%';
+            document.getElementById('watchAdBtn').disabled = false;
+            document.getElementById('watchAdBtn').innerText = 'WATCH AD';
+            document.getElementById('adModalOverlay').classList.remove('hidden');
+        }
+
+        function closeAdModal() {
+            document.getElementById('adModalOverlay').classList.add('hidden');
+            pendingAdItemType = null;
+            pendingAdItemId = null;
+        }
+
+        function simulateAdPlayback() {
+            const btn = document.getElementById('watchAdBtn');
+            btn.disabled = true;
+            btn.innerText = 'PLAYING AD...';
+            document.getElementById('adProgressBarContainer').classList.remove('hidden');
+
+            const bar = document.getElementById('adProgressBar');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                bar.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    completeAdReward();
+                }
+            }, 75);
+        }
+
+        function completeAdReward() {
+            if (pendingAdItemType === 'coins') {
+                coins += 200;
+                totalCoinsEarned += 200;
+                localStorage.setItem('rainbow_flapper_total_coins', totalCoinsEarned);
+                checkAchievementProgress();
+                updateCoinDisplays();
+                spawnFloatingText('+200 🪙 AD REWARD!', canvas.width / 2 - 70, canvas.height / 2, '#f59e0b');
+            } else if (pendingAdItemType === 'skin') {
+                if (!unlockedSkins.includes(pendingAdItemId)) {
+                    unlockedSkins.push(pendingAdItemId);
+                }
+                activeSkin = pendingAdItemId;
+                updateAbilityHUD();
+            } else if (pendingAdItemType === 'trail') {
+                if (!unlockedTrails.includes(pendingAdItemId)) {
+                    unlockedTrails.push(pendingAdItemId);
+                }
+                activeTrail = pendingAdItemId;
+            }
+            closeAdModal();
+            updateShopUI();
+        }
+
+        function equipSkin(id) {
+            activeSkin = id;
+            updateShopUI();
+            updateAbilityHUD();
+        }
+
+        function buySkin(id) {
+            const skin = SKINS.find(s => s.id === id);
+            if (skin && coins >= skin.cost) {
+                coins -= skin.cost;
+                unlockedSkins.push(id);
+                activeSkin = id;
+                updateShopUI();
+                updateAbilityHUD();
+            }
+        }
+
+        function equipTrail(id) {
+            activeTrail = id;
+            updateShopUI();
+        }
+
+        function buyTrail(id) {
+            const tr = TRAILS.find(t => t.id === id);
+            if (tr && coins >= tr.cost) {
+                coins -= tr.cost;
+                unlockedTrails.push(id);
+                activeTrail = id;
+                updateShopUI();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('highScoreDisplay').innerText = highScore;
+        updateCoinDisplays();
+        updateHeartsDisplay();
+        updateAbilityHUD();
+        resizeCanvas();
+        gameLoop();
+    </script>
+</body>
+</html>
