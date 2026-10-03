@@ -76,8 +76,8 @@
             <!-- Hearts Display (Max 5) -->
             <div id="heartsContainer" class="flex items-center gap-0.5 text-base">
                 <span id="heart1">❤️</span>
-                <span id="heart2">❤</span>
-                <span id="heart3">❤</span>
+                <span id="heart2">❤️</span>
+                <span id="heart3">❤️</span>
                 <span id="heart4">❤️</span>
                 <span id="heart5">❤️</span>
             </div>
@@ -101,7 +101,7 @@
             <!-- BOSS HEALTH HUD OVERLAY -->
             <div id="bossHpContainer" class="hidden absolute top-3 left-1/2 -translate-x-1/2 w-3/4 glass-panel p-2 rounded-xl border border-rose-500/50 flex flex-col items-center gap-1 z-20 shadow-xl">
                 <div class="flex justify-between w-full text-[10px] font-black uppercase text-rose-400 tracking-wider">
-                    <span id="bossTitle">⚠️ POWER BOSS WAVE ⚠</span>
+                    <span id="bossTitle">⚠️ POWER BOSS WAVE ⚠️</span>
                     <span id="bossHpText">100 / 100</span>
                 </div>
                 <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/10">
@@ -218,6 +218,9 @@
                         <button type="button" id="tabSkinsBtn" onclick="switchShopTab('skins')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300">
                             🎨 Skins
                         </button>
+                        <button type="button" id="tabPortalsBtn" onclick="switchShopTab('portals')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400">
+                            🌀 Portals
+                        </button>
                         <button type="button" id="tabTrailsBtn" onclick="switchShopTab('trails')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400">
                             ✨ Trail FX
                         </button>
@@ -230,6 +233,11 @@
                 <!-- Skins Tab Container -->
                 <div id="skinsContainer" class="w-full space-y-2 my-auto max-h-[280px] overflow-y-auto pr-1">
                     <!-- Dynamic Skins Inserted Here -->
+                </div>
+
+                <!-- Portals Tab Container -->
+                <div id="portalsContainer" class="hidden w-full space-y-2 my-auto max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Dynamic Portal Skins Inserted Here -->
                 </div>
 
                 <!-- Trails Tab Container -->
@@ -519,6 +527,15 @@
             { id: 'galaxy_starlight', name: 'Galaxy Starlight', cost: 0, primary: '#6366f1', abilityIcon: '✨', abilityName: 'Wormhole', cooldown: 12, adUnlock: true }
         ];
 
+        const PORTAL_SKINS = [
+            { id: 'default_multi', name: 'Multi-Color Harmony', cost: 0, desc: 'Dynamic shifting multi-color spectrum', adUnlock: false, previewColor: '#38bdf8' },
+            { id: 'neon_cyber', name: 'Neon Cyber Portal', cost: 40, desc: 'High-voltage electric cyan & violet grids', adUnlock: false, previewColor: '#06b6d4' },
+            { id: 'golden_sun', name: 'Golden Sun Portal', cost: 80, desc: 'Radiant amber & blazing golden rings', adUnlock: false, previewColor: '#f59e0b' },
+            { id: 'crystal_prism', name: 'Crystal Prism Portal', cost: 0, desc: 'Refractive prismatic diamond radiance', adUnlock: true, previewColor: '#ec4899' },
+            { id: 'void_rift', name: 'Void Rift Portal', cost: 0, desc: 'Deep cosmic purple & dark matter surge', adUnlock: true, previewColor: '#8b5cf6' },
+            { id: 'aurora_rainbow', name: 'Aurora Rainbow Portal', cost: 0, desc: 'Full-spectrum mixed rainbow cascade', adUnlock: true, previewColor: '#10b981' }
+        ];
+
         const TRAILS = [
             { id: 'rainbow', name: 'Rainbow Trail', cost: 0, preview: '🌈', adUnlock: false },
             { id: 'stars', name: 'Pixel Stars', cost: 30, preview: '⭐', adUnlock: false },
@@ -538,14 +555,12 @@
             { id: 'coin_boost', name: 'Golden Hoard Multiplier', icon: '🪙', desc: 'Increases bonus coins earned per match', baseCost: 25, costScale: 2.0, maxLevel: 5 }
         ];
 
-        // DAILY QUESTS DEFINITIONS
         let dailyQuests = [
             { id: 'play_games', title: 'Arcade Enthusiast', desc: 'Play 3 games', target: 3, progress: 0, reward: 50, completed: false },
             { id: 'collect_coins', title: 'Coin Collector', desc: 'Collect 20 coins total', target: 20, progress: 0, reward: 75, completed: false },
             { id: 'score_points', title: 'Portal Jumper', desc: 'Score 25 points total', target: 25, progress: 0, reward: 100, completed: false }
         ];
 
-        // ACHIEVEMENTS DEFINITIONS
         let achievements = [
             { id: 'first_flight', title: 'First Flight', desc: 'Start your first arcade game', target: 1, progress: 0, reward: 25, unlocked: false },
             { id: 'high_flyer', title: 'High Flyer', desc: 'Reach a score of 50', target: 50, progress: 0, reward: 150, unlocked: false },
@@ -568,6 +583,9 @@
         
         let unlockedSkins = ["rainbow"];
         let activeSkin = "rainbow";
+
+        let unlockedPortals = ["default_multi"];
+        let activePortalSkin = "default_multi";
 
         let unlockedTrails = ["rainbow"];
         let activeTrail = "rainbow";
@@ -834,6 +852,8 @@
             skillLevels = { roar_power: 0, shield_duration: 0, magnet_range: 0, coin_boost: 0 };
             unlockedSkins = ["rainbow"];
             activeSkin = "rainbow";
+            unlockedPortals = ["default_multi"];
+            activePortalSkin = "default_multi";
             unlockedTrails = ["rainbow"];
             activeTrail = "rainbow";
 
@@ -913,6 +933,8 @@
             skillLevels = { roar_power: 0, shield_duration: 0, magnet_range: 0, coin_boost: 0 };
             unlockedSkins = ["rainbow"];
             activeSkin = "rainbow";
+            unlockedPortals = ["default_multi"];
+            activePortalSkin = "default_multi";
             unlockedTrails = ["rainbow"];
             activeTrail = "rainbow";
 
@@ -991,7 +1013,7 @@
             portals = []; 
             obstacles = [];
 
-            document.getElementById('bossTitle').innerText = `⚠️ ${activeBoss.name} ⚠`;
+            document.getElementById('bossTitle').innerText = `⚠️ ${activeBoss.name} ⚠️`;
             document.getElementById('bossHpContainer').classList.remove('hidden');
             updateBossHpBar();
             spawnFloatingText(`⚠️ ${activeBoss.name.toUpperCase()} APPROACHING! ⚠️`, canvas.width / 2 - 110, 100, '#ef4444');
@@ -1084,7 +1106,7 @@
             } else {
                 dragon.invincibleTimer = 90 + (skillLevels.shield_duration * 15);
                 dragon.velocity = config.lift * 0.7;
-                spawnFloatingText(`-1 ❤`, dragon.x, dragon.y - 20, '#f43f5e');
+                spawnFloatingText(`-1 ❤️`, dragon.x, dragon.y - 20, '#f43f5e');
             }
         }
 
@@ -1171,12 +1193,23 @@
 
             portals.forEach(p => {
                 if (p.x > dragon.x && p.x < dragon.x + 280) {
-                    p.passed = true;
                     score += 1;
-                    document.getElementById('scoreDisplay').innerText = score;
+                    for (let i = 0; i < 10; i++) {
+                        particles.push({
+                            x: p.x + p.width / 2,
+                            y: p.top + p.gap / 2,
+                            vx: (Math.random() - 0.5) * 8,
+                            vy: (Math.random() - 0.5) * 8,
+                            size: Math.random() * 4 + 2,
+                            color: '#f97316',
+                            life: 1.0
+                        });
+                    }
                 }
             });
+            document.getElementById('scoreDisplay').innerText = score;
 
+            portals = portals.filter(p => !(p.x > dragon.x && p.x < dragon.x + 280));
             obstacles = obstacles.filter(obs => !(obs.x > dragon.x && obs.x < dragon.x + 280));
         }
 
@@ -1637,7 +1670,7 @@
                         if (hearts < 5) {
                             hearts++;
                             updateHeartsDisplay();
-                            spawnFloatingText('+1 ❤', pow.x, pow.y - 15, '#f43f5e');
+                            spawnFloatingText('+1 ❤️', pow.x, pow.y - 15, '#f43f5e');
                         } else spawnFloatingText('MAX ❤️', pow.x, pow.y - 15, '#f43f5e');
                     }
                     else if (pow.type === 'teleport') triggerWormholeJump();
@@ -1707,20 +1740,47 @@
 
         function drawLaserPortal(p) {
             const centerX = p.x + p.width / 2;
-            drawLaserBeam(centerX, 0, p.top, p.hue);
-            drawLaserBeam(centerX, canvas.height - p.bottom, canvas.height, p.hue);
-            drawPortalRing(centerX, p.top, p.hue);
-            drawPortalRing(centerX, canvas.height - p.bottom, p.hue);
+            let primaryColor = `hsl(${p.hue}, 100%, 50%)`;
+            let secondaryColor = `hsl(${(p.hue + 60) % 360}, 100%, 75%)`;
+            let ringCoreColor = `hsl(${(p.hue + 120) % 360}, 100%, 15%)`;
+
+            if (activePortalSkin === 'neon_cyber') {
+                primaryColor = '#06b6d4';
+                secondaryColor = '#8b5cf6';
+                ringCoreColor = '#0369a1';
+            } else if (activePortalSkin === 'golden_sun') {
+                primaryColor = '#f59e0b';
+                secondaryColor = '#fef08a';
+                ringCoreColor = '#78350f';
+            } else if (activePortalSkin === 'crystal_prism') {
+                primaryColor = '#ec4899';
+                secondaryColor = '#38bdf8';
+                ringCoreColor = '#831843';
+            } else if (activePortalSkin === 'void_rift') {
+                primaryColor = '#8b5cf6';
+                secondaryColor = '#ec4899';
+                ringCoreColor = '#3b0764';
+            } else if (activePortalSkin === 'aurora_rainbow') {
+                const mixHue = (frameCount * 4) % 360;
+                primaryColor = `hsl(${mixHue}, 100%, 55%)`;
+                secondaryColor = `hsl(${(mixHue + 180) % 360}, 100%, 75%)`;
+                ringCoreColor = `hsl(${(mixHue + 90) % 360}, 100%, 20%)`;
+            }
+
+            drawCustomLaserBeam(centerX, 0, p.top, primaryColor, secondaryColor);
+            drawCustomLaserBeam(centerX, canvas.height - p.bottom, canvas.height, primaryColor, secondaryColor);
+            drawCustomPortalRing(centerX, p.top, primaryColor, secondaryColor, ringCoreColor);
+            drawCustomPortalRing(centerX, canvas.height - p.bottom, primaryColor, secondaryColor, ringCoreColor);
         }
 
-        function drawLaserBeam(x, startY, endY, hue) {
+        function drawCustomLaserBeam(x, startY, endY, primaryColor, secondaryColor) {
             const length = endY - startY;
             if (length <= 0) return;
 
             ctx.save();
-            ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+            ctx.shadowColor = primaryColor;
             ctx.shadowBlur = 15;
-            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#38bdf8' : `hsl(${hue}, 100%, 50%)`;
+            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#38bdf8' : primaryColor;
             ctx.lineWidth = 26;
             ctx.globalAlpha = 0.35;
             ctx.beginPath();
@@ -1728,7 +1788,7 @@
             ctx.lineTo(x, endY);
             ctx.stroke();
 
-            ctx.strokeStyle = `hsl(${(hue + 40) % 360}, 100%, 70%)`;
+            ctx.strokeStyle = secondaryColor;
             ctx.lineWidth = 14;
             ctx.globalAlpha = 0.7;
             ctx.stroke();
@@ -1742,20 +1802,20 @@
             ctx.restore();
         }
 
-        function drawPortalRing(x, y, hue) {
+        function drawCustomPortalRing(x, y, primaryColor, secondaryColor, ringCoreColor) {
             ctx.save();
             ctx.translate(x, y);
 
-            ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+            ctx.shadowColor = primaryColor;
             ctx.shadowBlur = 12;
 
             ctx.beginPath();
             ctx.ellipse(0, 0, 24, 8, frameCount * 0.05, 0, Math.PI * 2);
-            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#93c5fd' : `hsl(${hue}, 100%, 75%)`;
+            ctx.strokeStyle = dragon.freezeTimer > 0 && !activeBoss ? '#93c5fd' : secondaryColor;
             ctx.lineWidth = 4;
             ctx.stroke();
 
-            ctx.fillStyle = `hsl(${(hue + 60) % 360}, 100%, 15%)`;
+            ctx.fillStyle = ringCoreColor;
             ctx.beginPath();
             ctx.ellipse(0, 0, 20, 6, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -2131,24 +2191,31 @@
         function switchShopTab(tab) {
             activeShopTab = tab;
             const skinsTabBtn = document.getElementById('tabSkinsBtn');
+            const portalsTabBtn = document.getElementById('tabPortalsBtn');
             const trailsTabBtn = document.getElementById('tabTrailsBtn');
             const skillsTabBtn = document.getElementById('tabSkillsBtn');
             
             const skinsContainer = document.getElementById('skinsContainer');
+            const portalsContainer = document.getElementById('portalsContainer');
             const trailsContainer = document.getElementById('trailsContainer');
             const skillsContainer = document.getElementById('skillsContainer');
 
             skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+            portalsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
             trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
             skillsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
 
             skinsContainer.classList.add('hidden');
+            portalsContainer.classList.add('hidden');
             trailsContainer.classList.add('hidden');
             skillsContainer.classList.add('hidden');
 
             if (tab === 'skins') {
                 skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
                 skinsContainer.classList.remove('hidden');
+            } else if (tab === 'portals') {
+                portalsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
+                portalsContainer.classList.remove('hidden');
             } else if (tab === 'trails') {
                 trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
                 trailsContainer.classList.remove('hidden');
@@ -2196,6 +2263,40 @@
                 skinsContainer.appendChild(skinDiv);
             });
 
+            const portalsContainer = document.getElementById('portalsContainer');
+            portalsContainer.innerHTML = '';
+            PORTAL_SKINS.forEach(ps => {
+                const isUnlocked = unlockedPortals.includes(ps.id);
+                const isActive = activePortalSkin === ps.id;
+                const portalDiv = document.createElement('div');
+                portalDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+
+                let actionButtonHtml = '';
+                if (isActive) {
+                    actionButtonHtml = `<span class="text-xs font-bold text-emerald-400">EQUIPPED</span>`;
+                } else if (isUnlocked) {
+                    actionButtonHtml = `<button type="button" onclick="equipPortalSkin('${ps.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>`;
+                } else {
+                    if (ps.adUnlock) {
+                        actionButtonHtml = `<button type="button" onclick="openAdModal('portal', '${ps.id}')" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-400 text-white text-xs font-black pulse-btn">📺 WATCH AD</button>`;
+                    } else {
+                        actionButtonHtml = `<button type="button" onclick="buyPortalSkin('${ps.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 border border-amber-400 text-slate-950 text-xs font-black pulse-btn">🪙 ${ps.cost}</button>`;
+                    }
+                }
+
+                portalDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full border border-white/20" style="background: ${ps.previewColor}"></div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${ps.name}</div>
+                            <div class="text-[10px] text-slate-400">${ps.desc}</div>
+                        </div>
+                    </div>
+                    ${actionButtonHtml}
+                `;
+                portalsContainer.appendChild(portalDiv);
+            });
+
             const trailsContainer = document.getElementById('trailsContainer');
             trailsContainer.innerHTML = '';
             TRAILS.forEach(tr => {
@@ -2232,140 +2333,135 @@
 
             const skillsContainer = document.getElementById('skillsContainer');
             skillsContainer.innerHTML = '';
-            SKILLS_UPGRADES.forEach(skill => {
-                const currentLevel = skillLevels[skill.id] || 0;
-                const isMax = currentLevel >= skill.maxLevel;
-                const upgradeCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLevel));
+            SKILLS_UPGRADES.forEach(sk => {
+                const currentLvl = skillLevels[sk.id];
+                const cost = Math.floor(sk.baseCost * Math.pow(sk.costScale, currentLvl));
+                const isMax = currentLvl >= sk.maxLevel;
+                const canAfford = coins >= cost;
 
                 const skillDiv = document.createElement('div');
                 skillDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
 
                 let upgradeButtonHtml = '';
                 if (isMax) {
-                    upgradeButtonHtml = `<span class="text-xs font-bold text-amber-400">MAX LVL</span>`;
+                    upgradeButtonHtml = `<span class="text-xs font-bold text-amber-400">MAX LEVEL</span>`;
                 } else {
-                    upgradeButtonHtml = `<button type="button" onclick="upgradeSkill('${skill.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 border border-amber-400 text-slate-950 text-xs font-black pulse-btn">🪙 ${upgradeCost}</button>`;
+                    upgradeButtonHtml = `<button type="button" onclick="upgradeSkill('${sk.id}')" class="px-3 py-1 rounded-lg ${canAfford ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-500 border border-white/10'} text-xs font-black pulse-btn">🪙 ${cost}</button>`;
                 }
 
                 skillDiv.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base border border-amber-500/30">${skill.icon}</div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs border border-white/10">${sk.icon}</div>
                         <div>
-                            <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                                ${skill.name} <span class="text-[10px] text-cyan-400 font-semibold">Lvl ${currentLevel}/${skill.maxLevel}</span>
-                            </div>
-                            <div class="text-[10px] text-slate-400">${skill.desc}</div>
+                            <div class="text-xs font-bold text-white">${sk.name} <span class="text-[10px] text-cyan-400">Lvl ${currentLvl}/${sk.maxLevel}</span></div>
+                            <div class="text-[10px] text-slate-400">${sk.desc}</div>
                         </div>
                     </div>
                     ${upgradeButtonHtml}
                 `;
                 skillsContainer.appendChild(skillDiv);
             });
-
-            updateCoinDisplays();
         }
 
-        function updateQuestsUI() {
-            const container = document.getElementById('questsContainer');
-            container.innerHTML = '';
-            dailyQuests.forEach(q => {
-                const questDiv = document.createElement('div');
-                questDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
-
-                let statusHtml = '';
-                if (q.completed) {
-                    statusHtml = `<span class="text-xs font-bold text-emerald-400">COMPLETED (+${q.reward} 🪙)</span>`;
-                } else {
-                    statusHtml = `
-                        <div class="text-right">
-                            <div class="text-[11px] font-bold text-purple-300">${q.progress} / ${q.target}</div>
-                            <div class="text-[10px] text-amber-400 font-bold">+${q.reward} 🪙</div>
-                        </div>
-                    `;
-                }
-
-                questDiv.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-purple-500/25 flex items-center justify-center text-base border border-purple-400/40">📜</div>
-                        <div>
-                            <div class="text-xs font-bold text-white">${q.title}</div>
-                            <div class="text-[10px] text-slate-400">${q.desc}</div>
-                        </div>
-                    </div>
-                    ${statusHtml}
-                `;
-                container.appendChild(questDiv);
-            });
-        }
-
-        function updateAchievementsUI() {
-            const container = document.getElementById('achievementsContainer');
-            container.innerHTML = '';
-            achievements.forEach(ach => {
-                const achDiv = document.createElement('div');
-                achDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
-
-                let statusHtml = '';
-                if (ach.unlocked) {
-                    statusHtml = `<span class="text-xs font-bold text-cyan-400">UNLOCKED (+${ach.reward} 🪙)</span>`;
-                } else {
-                    statusHtml = `
-                        <div class="text-right">
-                            <div class="text-[11px] font-bold text-slate-300">${ach.progress} / ${ach.target}</div>
-                            <div class="text-[10px] text-amber-400 font-bold">+${ach.reward} 🪙</div>
-                        </div>
-                    `;
-                }
-
-                achDiv.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-cyan-500/25 flex items-center justify-center text-base border border-cyan-400/40">🏆</div>
-                        <div>
-                            <div class="text-xs font-bold text-white">${ach.title}</div>
-                            <div class="text-[10px] text-slate-400">${ach.desc}</div>
-                        </div>
-                    </div>
-                    ${statusHtml}
-                `;
-                container.appendChild(achDiv);
-            });
-        }
-
-        function upgradeSkill(id) {
-            const skill = SKILLS_UPGRADES.find(s => s.id === id);
-            const currentLevel = skillLevels[id] || 0;
-            if (!skill || currentLevel >= skill.maxLevel) return;
-
-            const upgradeCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLevel));
-            if (coins >= upgradeCost) {
-                coins -= upgradeCost;
-                skillLevels[id] = currentLevel + 1;
+        function buySkin(skinId) {
+            const skin = SKINS.find(s => s.id === skinId);
+            if (!skin || unlockedSkins.includes(skinId)) return;
+            if (coins >= skin.cost) {
+                coins -= skin.cost;
+                unlockedSkins.push(skinId);
+                activeSkin = skinId;
+                updateCoinDisplays();
                 updateShopUI();
+                updateAbilityHUD();
                 sound.playPowerup();
+                spawnFloatingText(`🎨 UNLOCKED & EQUIPPED!`, canvas.width / 2 - 80, 100, '#06b6d4');
+            } else {
+                spawnFloatingText(`NOT ENOUGH COINS!`, canvas.width / 2 - 70, 100, '#ef4444');
             }
         }
 
-        function openAdForCoins() {
-            pendingAdItemType = 'coins';
-            pendingAdItemId = null;
-            document.getElementById('adModalTitle').innerText = 'WATCH AD FOR 200 COINS';
-            document.getElementById('adModalDescription').innerText = 'Watch a quick promotional video to instantly earn +200 free coins!';
-            document.getElementById('adProgressBarContainer').classList.add('hidden');
-            document.getElementById('adProgressBar').style.width = '0%';
-            document.getElementById('watchAdBtn').disabled = false;
-            document.getElementById('watchAdBtn').innerText = 'WATCH AD';
-            document.getElementById('adModalOverlay').classList.remove('hidden');
+        function equipSkin(skinId) {
+            if (unlockedSkins.includes(skinId)) {
+                activeSkin = skinId;
+                updateShopUI();
+                updateAbilityHUD();
+                sound.playScore();
+            }
+        }
+
+        function buyPortalSkin(portalId) {
+            const portal = PORTAL_SKINS.find(p => p.id === portalId);
+            if (!portal || unlockedPortals.includes(portalId)) return;
+            if (coins >= portal.cost) {
+                coins -= portal.cost;
+                unlockedPortals.push(portalId);
+                activePortalSkin = portalId;
+                updateCoinDisplays();
+                updateShopUI();
+                sound.playPowerup();
+                spawnFloatingText(`🌀 PORTAL SKIN EQUIPPED!`, canvas.width / 2 - 85, 100, '#38bdf8');
+            } else {
+                spawnFloatingText(`NOT ENOUGH COINS!`, canvas.width / 2 - 70, 100, '#ef4444');
+            }
+        }
+
+        function equipPortalSkin(portalId) {
+            if (unlockedPortals.includes(portalId)) {
+                activePortalSkin = portalId;
+                updateShopUI();
+                sound.playScore();
+            }
+        }
+
+        function buyTrail(trailId) {
+            const tr = TRAILS.find(t => t.id === trailId);
+            if (!tr || unlockedTrails.includes(trailId)) return;
+            if (coins >= tr.cost) {
+                coins -= tr.cost;
+                unlockedTrails.push(trailId);
+                activeTrail = trailId;
+                updateCoinDisplays();
+                updateShopUI();
+                sound.playPowerup();
+                spawnFloatingText(`✨ TRAIL UNLOCKED!`, canvas.width / 2 - 70, 100, '#06b6d4');
+            } else {
+                spawnFloatingText(`NOT ENOUGH COINS!`, canvas.width / 2 - 70, 100, '#ef4444');
+            }
+        }
+
+        function equipTrail(trailId) {
+            if (unlockedTrails.includes(trailId)) {
+                activeTrail = trailId;
+                updateShopUI();
+                sound.playScore();
+            }
+        }
+
+        function upgradeSkill(skillId) {
+            const sk = SKILLS_UPGRADES.find(s => s.id === skillId);
+            if (!sk || skillLevels[skillId] >= sk.maxLevel) return;
+            const cost = Math.floor(sk.baseCost * Math.pow(sk.costScale, skillLevels[skillId]));
+            if (coins >= cost) {
+                coins -= cost;
+                skillLevels[skillId]++;
+                updateCoinDisplays();
+                updateShopUI();
+                sound.playPowerup();
+                spawnFloatingText(`⚡ SKILL UPGRADED!`, canvas.width / 2 - 70, 100, '#f59e0b');
+            } else {
+                spawnFloatingText(`NOT ENOUGH COINS!`, canvas.width / 2 - 70, 100, '#ef4444');
+            }
         }
 
         function openAdModal(type, id) {
             pendingAdItemType = type;
             pendingAdItemId = id;
-            document.getElementById('adModalTitle').innerText = 'WATCH AD TO UNLOCK';
-            document.getElementById('adModalDescription').innerText = 'Watch a quick promotional video to instantly unlock this item for free!';
-            document.getElementById('adProgressBarContainer').classList.add('hidden');
+            const item = type === 'skin' ? SKINS.find(s => s.id === id) : (type === 'portal' ? PORTAL_SKINS.find(p => p.id === id) : TRAILS.find(t => t.id === id));
+            document.getElementById('adModalTitle').innerText = `WATCH AD TO UNLOCK ${item.name.toUpperCase()}`;
+            document.getElementById('adModalDescription').innerText = `Watch a quick promotional video to instantly unlock this item for free!`;
+            document.getElementById('adProgressBarContainer').classList.remove('hidden');
+            document.getElementById('watchAdBtn').classList.remove('hidden');
             document.getElementById('adProgressBar').style.width = '0%';
-            document.getElementById('watchAdBtn').disabled = false;
-            document.getElementById('watchAdBtn').innerText = 'WATCH AD';
             document.getElementById('adModalOverlay').classList.remove('hidden');
         }
 
@@ -2377,10 +2473,7 @@
 
         function simulateAdPlayback() {
             const btn = document.getElementById('watchAdBtn');
-            btn.disabled = true;
-            btn.innerText = 'PLAYING AD...';
-            document.getElementById('adProgressBarContainer').classList.remove('hidden');
-
+            btn.classList.add('hidden');
             const bar = document.getElementById('adProgressBar');
             let progress = 0;
             const interval = setInterval(() => {
@@ -2388,65 +2481,76 @@
                 bar.style.width = `${progress}%`;
                 if (progress >= 100) {
                     clearInterval(interval);
-                    completeAdReward();
+                    document.getElementById('adModalOverlay').classList.add('hidden');
+                    
+                    if (pendingAdItemType === 'skin') {
+                        if (!unlockedSkins.includes(pendingAdItemId)) unlockedSkins.push(pendingAdItemId);
+                        activeSkin = pendingAdItemId;
+                        updateAbilityHUD();
+                        spawnFloatingText(`📺 SKIN UNLOCKED VIA AD!`, canvas.width / 2 - 90, 100, '#a855f7');
+                    } else if (pendingAdItemType === 'portal') {
+                        if (!unlockedPortals.includes(pendingAdItemId)) unlockedPortals.push(pendingAdItemId);
+                        activePortalSkin = pendingAdItemId;
+                        spawnFloatingText(`📺 PORTAL UNLOCKED VIA AD!`, canvas.width / 2 - 95, 100, '#38bdf8');
+                    } else if (pendingAdItemType === 'trail') {
+                        if (!unlockedTrails.includes(pendingAdItemId)) unlockedTrails.push(pendingAdItemId);
+                        activeTrail = pendingAdItemId;
+                        spawnFloatingText(`📺 TRAIL UNLOCKED VIA AD!`, canvas.width / 2 - 90, 100, '#06b6d4');
+                    }
+
+                    sound.playPowerup();
+                    updateShopUI();
                 }
-            }, 75);
+            }, 60);
         }
 
-        function completeAdReward() {
-            if (pendingAdItemType === 'coins') {
-                coins += 200;
-                totalCoinsEarned += 200;
-                localStorage.setItem('rainbow_flapper_total_coins', totalCoinsEarned);
-                checkAchievementProgress();
-                updateCoinDisplays();
-                spawnFloatingText('+200 🪙 AD REWARD!', canvas.width / 2 - 70, canvas.height / 2, '#f59e0b');
-            } else if (pendingAdItemType === 'skin') {
-                if (!unlockedSkins.includes(pendingAdItemId)) {
-                    unlockedSkins.push(pendingAdItemId);
-                }
-                activeSkin = pendingAdItemId;
-                updateAbilityHUD();
-            } else if (pendingAdItemType === 'trail') {
-                if (!unlockedTrails.includes(pendingAdItemId)) {
-                    unlockedTrails.push(pendingAdItemId);
-                }
-                activeTrail = pendingAdItemId;
-            }
-            closeAdModal();
-            updateShopUI();
+        function openAdForCoins() {
+            pendingAdItemType = 'coins';
+            pendingAdItemId = null;
+            document.getElementById('adModalTitle').innerText = `WATCH AD FOR +200 COINS`;
+            document.getElementById('adModalDescription').innerText = `Watch a quick promotional video to instantly claim 200 bonus coins!`;
+            document.getElementById('adProgressBarContainer').classList.remove('hidden');
+            document.getElementById('watchAdBtn').classList.remove('hidden');
+            document.getElementById('adProgressBar').style.width = '0%';
+            document.getElementById('adModalOverlay').classList.remove('hidden');
         }
 
-        function equipSkin(id) {
-            activeSkin = id;
-            updateShopUI();
-            updateAbilityHUD();
+        function updateQuestsUI() {
+            const container = document.getElementById('questsContainer');
+            container.innerHTML = '';
+            dailyQuests.forEach(q => {
+                const questDiv = document.createElement('div');
+                questDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+                questDiv.innerHTML = `
+                    <div>
+                        <div class="text-xs font-bold text-white">${q.title} <span class="text-[10px] text-purple-400">(+${q.reward} 🪙)</span></div>
+                        <div class="text-[10px] text-slate-400">${q.desc} (${q.progress}/${q.target})</div>
+                    </div>
+                    <div>
+                        ${q.completed ? '<span class="text-xs font-bold text-emerald-400">DONE</span>' : '<span class="text-xs font-bold text-amber-400">IN PROGRESS</span>'}
+                    </div>
+                `;
+                container.appendChild(questDiv);
+            });
         }
 
-        function buySkin(id) {
-            const skin = SKINS.find(s => s.id === id);
-            if (skin && coins >= skin.cost) {
-                coins -= skin.cost;
-                unlockedSkins.push(id);
-                activeSkin = id;
-                updateShopUI();
-                updateAbilityHUD();
-            }
-        }
-
-        function equipTrail(id) {
-            activeTrail = id;
-            updateShopUI();
-        }
-
-        function buyTrail(id) {
-            const tr = TRAILS.find(t => t.id === id);
-            if (tr && coins >= tr.cost) {
-                coins -= tr.cost;
-                unlockedTrails.push(id);
-                activeTrail = id;
-                updateShopUI();
-            }
+        function updateAchievementsUI() {
+            const container = document.getElementById('achievementsContainer');
+            container.innerHTML = '';
+            achievements.forEach(ach => {
+                const achDiv = document.createElement('div');
+                achDiv.className = 'flex justify-between items-center p-3 bg-slate-900/80 rounded-xl border border-white/10';
+                achDiv.innerHTML = `
+                    <div>
+                        <div class="text-xs font-bold text-white">${ach.title} <span class="text-[10px] text-cyan-400">(+${ach.reward} 🪙)</span></div>
+                        <div class="text-[10px] text-slate-400">${ach.desc} (${ach.progress}/${ach.target})</div>
+                    </div>
+                    <div>
+                        ${ach.unlocked ? '<span class="text-xs font-bold text-emerald-400">UNLOCKED</span>' : '<span class="text-xs font-bold text-slate-500">LOCKED</span>'}
+                    </div>
+                `;
+                container.appendChild(achDiv);
+            });
         }
 
         function gameLoop() {
@@ -2455,12 +2559,8 @@
             requestAnimationFrame(gameLoop);
         }
 
-        document.getElementById('highScoreDisplay').innerText = highScore;
-        updateCoinDisplays();
-        updateHeartsDisplay();
-        updateAbilityHUD();
         resizeCanvas();
-        gameLoop();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
