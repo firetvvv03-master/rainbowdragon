@@ -592,7 +592,6 @@
         let coins = 0;
         let sessionCoins = 0;
         
-        // Game Over tracking options requested
         let boughtHeartsThisGame = false;
         let adsWatchedForHeartsCount = 0;
 
@@ -713,7 +712,7 @@
             for (let i = 1; i <= 6; i++) {
                 const heartElem = document.getElementById(`heart${i}`);
                 if (i <= hearts) {
-                    heartElem.innerText = '❤️';
+                    heartElem.innerText = '❤️️';
                     heartElem.style.opacity = '1.0';
                 } else {
                     heartElem.innerText = '🖤';
@@ -773,7 +772,6 @@
             });
         }
 
-        // --- NEW GAME OVER SHOP & AD FUNCTIONS ---
         function buyHeartsWithCoins() {
             if (boughtHeartsThisGame) return;
             const cost = 300;
@@ -784,12 +782,10 @@
                 updateCoinDisplays();
                 updateHeartsDisplay();
 
-                // Update UI limit state
                 const limitSpan = document.getElementById('buyHeartLimit');
                 limitSpan.innerText = "(Purchased)";
                 document.getElementById('buyHeartBtn').classList.add('opacity-50', 'cursor-not-allowed');
 
-                // Resume game from gameover state
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 gameState = 'PLAYING';
                 dragon.invincibleTimer = 120;
@@ -804,7 +800,6 @@
         function watchAdForFullHeart() {
             if (adsWatchedForHeartsCount >= 3) return;
 
-            // Trigger Ad simulation popup or direct count
             pendingAdItemType = 'full_heart_ad';
             document.getElementById('adModalTitle').innerText = "WATCH AD FOR FULL HEALTH";
             document.getElementById('adModalDescription').innerText = "Watch a quick video to instantly restore your Dragon's full hearts!";
@@ -1005,7 +1000,6 @@
             unlockedTrails = ["rainbow"];
             activeTrail = "rainbow";
 
-            // Reset Game Over session items
             boughtHeartsThisGame = false;
             adsWatchedForHeartsCount = 0;
 
@@ -1080,7 +1074,9 @@
                 color: bossTemplate.color,
                 secondaryColor: bossTemplate.secondaryColor,
                 type: bossTemplate.type,
-                teleportTimer: 0
+                teleportTimer: 0,
+                minionsSpawned: false, // Flag to track if minions are summoned
+                minions: [] // Array to hold the 2 summoned minions
             };
 
             portals = []; 
@@ -1222,7 +1218,6 @@
             document.getElementById('surgeBanner').classList.add('hidden');
             document.getElementById('bossHpContainer').classList.add('hidden');
             
-            // Reset game over buy buttons state for this session match
             boughtHeartsThisGame = false;
             adsWatchedForHeartsCount = 0;
             const limitSpan = document.getElementById('buyHeartLimit');
@@ -1483,6 +1478,47 @@
                         }
 
                         activeBoss.y = (canvas.height / 2) + Math.sin(activeBoss.moveAngle) * 110;
+
+                        // --- BOSS PHASE MECHANIC: SUMMON 2 MINIONS AT <= 50% HP ---
+                        if (activeBoss.hp <= activeBoss.maxHp * 0.5 && !activeBoss.minionsSpawned) {
+                            activeBoss.minionsSpawned = true;
+                            activeBoss.minions = [
+                                { offsetX: 0, offsetY: -60, radius: 14, angleOffset: 0, attackTimer: 0 },
+                                { offsetX: 0, offsetY: 60, radius: 14, angleOffset: Math.PI, attackTimer: 30 }
+                            ];
+                            spawnFloatingText('⚠️ PHASE 2: MINIONS SUMMONED! ⚠️️', canvas.width / 2 - 110, 130, '#f59e0b');
+                            sound.playAbility();
+                        }
+
+                        // Update minions if active
+                        if (activeBoss.minionsSpawned && activeBoss.minions) {
+                            activeBoss.minions.forEach((minion, mIndex) => {
+                                minion.angleOffset += 0.08;
+                                minion.offsetY = Math.sin(minion.angleOffset) * 70;
+                                
+                                const minionX = activeBoss.x + Math.cos(minion.angleOffset) * 20;
+                                const minionY = activeBoss.y + minion.offsetY;
+
+                                // Check collision with dragon
+                                if (Math.hypot(dragon.x - minionX, dragon.y - minionY) < dragon.radius + minion.radius) {
+                                    takeDamage();
+                                }
+
+                                // Minion shooting logic
+                                minion.attackTimer++;
+                                if (minion.attackTimer >= 70) {
+                                    minion.attackTimer = 0;
+                                    const angleToDragon = Math.atan2(dragon.y - minionY, dragon.x - minionX);
+                                    bossProjectiles.push({
+                                        x: minionX,
+                                        y: minionY,
+                                        radius: 5,
+                                        vx: Math.cos(angleToDragon) * 4.0,
+                                        vy: Math.sin(angleToDragon) * 4.0
+                                    });
+                                }
+                            });
+                        }
 
                         activeBoss.attackCooldown++;
                         if (activeBoss.attackCooldown >= 60) {
@@ -2080,6 +2116,32 @@
                 ctx.fill();
 
                 ctx.restore();
+
+                // DRAW SUMMONED MINIONS IF ACTIVE
+                if (activeBoss.minionsSpawned && activeBoss.minions) {
+                    activeBoss.minions.forEach(minion => {
+                        const minionX = activeBoss.x + Math.cos(minion.angleOffset) * 20;
+                        const minionY = activeBoss.y + minion.offsetY;
+
+                        ctx.save();
+                        ctx.shadowColor = '#f59e0b';
+                        ctx.shadowBlur = 12;
+                        ctx.fillStyle = '#f59e0b';
+                        ctx.beginPath();
+                        ctx.arc(minionX, minionY, minion.radius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        ctx.font = '10px Outfit, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('👾', minionX, minionY);
+                        ctx.restore();
+                    });
+                }
             }
 
             playerProjectiles.forEach(proj => {
@@ -2138,7 +2200,6 @@
             });
             ctx.globalAlpha = 1.0;
 
-            // DRAW CLONE COMPANION
             if (dragon.cloneTimer > 0 && dragonHistory.length > 15) {
                 const clonePos = dragonHistory[15];
                 ctx.save();
@@ -2302,8 +2363,8 @@
                 document.getElementById('pauseBtnIcon').innerText = '▶';
                 document.getElementById('pauseOverlay').classList.add('hidden');
             }
-            switchShopTab('skins');
             document.getElementById('shopOverlay').classList.remove('hidden');
+            renderShopItems();
         }
 
         function closeShop() {
@@ -2311,235 +2372,139 @@
             if (wasPlayingBeforeShop) {
                 isPaused = false;
                 document.getElementById('pauseBtnIcon').innerText = '⏸';
-            } else {
-                wasPlayingBeforeShop = false;
             }
-        }
-
-        function openQuests() {
-            updateQuestsUI();
-            document.getElementById('questsOverlay').classList.remove('hidden');
-        }
-
-        function closeQuests() {
-            document.getElementById('questsOverlay').classList.add('hidden');
-        }
-
-        function openAchievements() {
-            updateAchievementsUI();
-            document.getElementById('achievementsOverlay').classList.remove('hidden');
-        }
-
-        function closeAchievements() {
-            document.getElementById('achievementsOverlay').classList.add('hidden');
         }
 
         function switchShopTab(tab) {
             activeShopTab = tab;
-            const skinsTabBtn = document.getElementById('tabSkinsBtn');
-            const portalsTabBtn = document.getElementById('tabPortalsBtn');
-            const trailsTabBtn = document.getElementById('tabTrailsBtn');
-            const skillsTabBtn = document.getElementById('tabSkillsBtn');
-            
-            const skinsContainer = document.getElementById('skinsContainer');
-            const portalsContainer = document.getElementById('portalsContainer');
-            const trailsContainer = document.getElementById('trailsContainer');
-            const skillsContainer = document.getElementById('skillsContainer');
+            document.getElementById('skinsContainer').classList.toggle('hidden', tab !== 'skins');
+            document.getElementById('portalsContainer').classList.toggle('hidden', tab !== 'portals');
+            document.getElementById('trailsContainer').classList.toggle('hidden', tab !== 'trails');
+            document.getElementById('skillsContainer').classList.toggle('hidden', tab !== 'skills');
 
-            skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
-            portalsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
-            trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
-            skillsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+            ['skins', 'portals', 'trails', 'skills'].forEach(t => {
+                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                if (t === tab) {
+                    btn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
+                } else {
+                    btn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-white/10 text-slate-400';
+                }
+            });
 
-            skinsContainer.classList.add('hidden');
-            portalsContainer.classList.add('hidden');
-            trailsContainer.classList.add('hidden');
-            skillsContainer.classList.add('hidden');
+            renderShopItems();
+        }
 
-            if (tab === 'skins') {
-                skinsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
-                skinsContainer.classList.remove('hidden');
-                updateSkinsUI();
-            } else if (tab === 'portals') {
-                portalsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
-                portalsContainer.classList.remove('hidden');
-                updatePortalsUI();
-            } else if (tab === 'trails') {
-                trailsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
-                trailsContainer.classList.remove('hidden');
-                updateTrailsUI();
-            } else if (tab === 'skills') {
-                skillsTabBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/20 border border-cyan-400 text-cyan-300';
-                skillsContainer.classList.remove('hidden');
-                updateSkillsUI();
+        function renderShopItems() {
+            if (activeShopTab === 'skins') {
+                let html = '';
+                SKINS.forEach(skin => {
+                    const isUnlocked = unlockedSkins.includes(skin.id);
+                    const isActive = activeSkin === skin.id;
+                    html += `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border ${isActive ? 'border-cyan-400' : 'border-white/10'}">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md" style="background: ${skin.primary};">${skin.abilityIcon}</div>
+                                <div>
+                                    <div class="text-xs font-bold">${skin.name}</div>
+                                    <div class="text-[10px] text-slate-400">Ability: ${skin.abilityName} (${skin.cooldown}s)</div>
+                                </div>
+                            </div>
+                            <div>
+                                ${isActive ? '<span class="text-[11px] font-bold text-cyan-400 px-2 py-1">ACTIVE</span>' :
+                                  isUnlocked ? `<button type="button" onclick="selectSkin('${skin.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>` :
+                                  skin.adUnlock ? `<button type="button" onclick="openAdModal('skin', '${skin.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 text-xs font-bold pulse-btn flex items-center gap-1">📺 AD UNLOCK</button>` :
+                                  `<button type="button" onclick="buySkin('${skin.id}', ${skin.cost})" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black pulse-btn">${skin.cost} 🪙</button>`}
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('skinsContainer').innerHTML = html;
+            } else if (activeShopTab === 'portals') {
+                let html = '';
+                PORTAL_SKINS.forEach(portal => {
+                    const isUnlocked = unlockedPortals.includes(portal.id);
+                    const isActive = activePortalSkin === portal.id;
+                    html += `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border ${isActive ? 'border-cyan-400' : 'border-white/10'}">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md" style="background: ${portal.previewColor};">🌀</div>
+                                <div>
+                                    <div class="text-xs font-bold">${portal.name}</div>
+                                    <div class="text-[10px] text-slate-400">${portal.desc}</div>
+                                </div>
+                            </div>
+                            <div>
+                                ${isActive ? '<span class="text-[11px] font-bold text-cyan-400 px-2 py-1">ACTIVE</span>' :
+                                  isUnlocked ? `<button type="button" onclick="selectPortalSkin('${portal.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>` :
+                                  portal.adUnlock ? `<button type="button" onclick="openAdModal('portal', '${portal.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 text-xs font-bold pulse-btn flex items-center gap-1">📺 AD UNLOCK</button>` :
+                                  `<button type="button" onclick="buyPortalSkin('${portal.id}', ${portal.cost})" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black pulse-btn">${portal.cost} 🪙</button>`}
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('portalsContainer').innerHTML = html;
+            } else if (activeShopTab === 'trails') {
+                let html = '';
+                TRAILS.forEach(trail => {
+                    const isUnlocked = unlockedTrails.includes(trail.id);
+                    const isActive = activeTrail === trail.id;
+                    html += `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border ${isActive ? 'border-cyan-400' : 'border-white/10'}">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base">${trail.preview}</div>
+                                <div>
+                                    <div class="text-xs font-bold">${trail.name}</div>
+                                </div>
+                            </div>
+                            <div>
+                                ${isActive ? '<span class="text-[11px] font-bold text-cyan-400 px-2 py-1">ACTIVE</span>' :
+                                  isUnlocked ? `<button type="button" onclick="selectTrail('${trail.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold pulse-btn">EQUIP</button>` :
+                                  trail.adUnlock ? `<button type="button" onclick="openAdModal('trail', '${trail.id}')" class="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 text-xs font-bold pulse-btn flex items-center gap-1">📺 AD UNLOCK</button>` :
+                                  `<button type="button" onclick="buyTrail('${trail.id}', ${trail.cost})" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black pulse-btn">${trail.cost} 🪙</button>`}
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('trailsContainer').innerHTML = html;
+            } else if (activeShopTab === 'skills') {
+                let html = '';
+                SKILLS_UPGRADES.forEach(skill => {
+                    const currentLvl = skillLevels[skill.id];
+                    const nextCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLvl));
+                    const isMax = currentLvl >= skill.maxLevel;
+                    html += `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-white/10">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base">${skill.icon}</div>
+                                <div>
+                                    <div class="text-xs font-bold">${skill.name} (Lvl ${currentLvl}/${skill.maxLevel})</div>
+                                    <div class="text-[10px] text-slate-400">${skill.desc}</div>
+                                </div>
+                            </div>
+                            <div>
+                                ${isMax ? '<span class="text-[11px] font-bold text-emerald-400 px-2 py-1">MAXED</span>' :
+                                  `<button type="button" onclick="upgradeSkill('${skill.id}', ${nextCost})" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black pulse-btn">${nextCost} 🪙</button>`}
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('skillsContainer').innerHTML = html;
             }
         }
 
-        function updateSkinsUI() {
-            const container = document.getElementById('skinsContainer');
-            container.innerHTML = '';
-            SKINS.forEach(skin => {
-                const isUnlocked = unlockedSkins.includes(skin.id);
-                const isActive = activeSkin === skin.id;
-
-                const div = document.createElement('div');
-                div.className = `p-2.5 rounded-xl border flex items-center justify-between ${isActive ? 'bg-cyan-500/10 border-cyan-400' : 'bg-slate-900 border-white/10'}`;
-                
-                div.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-base" style="background:${skin.primary}">${skin.abilityIcon}</div>
-                        <div>
-                            <div class="text-xs font-black text-white">${skin.name}</div>
-                            <div class="text-[10px] text-gray-400">Ability: ${skin.abilityName} (${skin.cooldown}s CD)</div>
-                        </div>
-                    </div>
-                    <div>
-                        ${isActive ? '<span class="text-[10px] font-bold text-cyan-400 px-2 py-1">EQUIPPED</span>' :
-                          isUnlocked ? `<button onclick="equipSkin('${skin.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">EQUIP</button>` :
-                          skin.adUnlock ? `<button onclick="promptWatchAd('skin', '${skin.id}')" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-bold">📺 WATCH AD</button>` :
-                          `<button onclick="buySkin('${skin.id}')" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">🪙 ${skin.cost}</button>`
-                        }
-                    </div>
-                `;
-                container.appendChild(div);
-            });
+        function selectSkin(id) {
+            activeSkin = id;
+            renderShopItems();
+            updateAbilityHUD();
         }
 
-        function updatePortalsUI() {
-            const container = document.getElementById('portalsContainer');
-            container.innerHTML = '';
-            PORTAL_SKINS.forEach(portal => {
-                const isUnlocked = unlockedPortals.includes(portal.id);
-                const isActive = activePortalSkin === portal.id;
-
-                const div = document.createElement('div');
-                div.className = `p-2.5 rounded-xl border flex items-center justify-between ${isActive ? 'bg-cyan-500/10 border-cyan-400' : 'bg-slate-900 border-white/10'}`;
-                
-                div.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm border border-white/20" style="background:${portal.previewColor}">🌀</div>
-                        <div>
-                            <div class="text-xs font-black text-white">${portal.name}</div>
-                            <div class="text-[10px] text-gray-400">${portal.desc}</div>
-                        </div>
-                    </div>
-                    <div>
-                        ${isActive ? '<span class="text-[10px] font-bold text-cyan-400 px-2 py-1">EQUIPPED</span>' :
-                          isUnlocked ? `<button onclick="equipPortal('${portal.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">EQUIP</button>` :
-                          portal.adUnlock ? `<button onclick="promptWatchAd('portal', '${portal.id}')" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-bold">📺 WATCH AD</button>` :
-                          `<button onclick="buyPortal('${portal.id}')" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">🪙 ${portal.cost}</button>`
-                        }
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateTrailsUI() {
-            const container = document.getElementById('trailsContainer');
-            container.innerHTML = '';
-            TRAILS.forEach(trailObj => {
-                const isUnlocked = unlockedTrails.includes(trailObj.id);
-                const isActive = activeTrail === trailObj.id;
-
-                const div = document.createElement('div');
-                div.className = `p-2.5 rounded-xl border flex items-center justify-between ${isActive ? 'bg-cyan-500/10 border-cyan-400' : 'bg-slate-900 border-white/10'}`;
-                
-                div.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base">${trailObj.preview}</div>
-                        <div>
-                            <div class="text-xs font-black text-white">${trailObj.name}</div>
-                            <div class="text-[10px] text-gray-450">Custom flight particle trail FX</div>
-                        </div>
-                    </div>
-                    <div>
-                        ${isActive ? '<span class="text-[10px] font-bold text-cyan-400 px-2 py-1">EQUIPPED</span>' :
-                          isUnlocked ? `<button onclick="equipTrail('${trailObj.id}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">EQUIP</button>` :
-                          trailObj.adUnlock ? `<button onclick="promptWatchAd('trail', '${trailObj.id}')" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-bold">📺 WATCH AD</button>` :
-                          `<button onclick="buyTrail('${trailObj.id}')" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">🪙 ${trailObj.cost}</button>`
-                        }
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateSkillsUI() {
-            const container = document.getElementById('skillsContainer');
-            container.innerHTML = '';
-            SKILLS_UPGRADES.forEach(skill => {
-                const currentLvl = skillLevels[skill.id];
-                const nextCost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLvl));
-                const isMax = currentLvl >= skill.maxLevel;
-
-                const div = document.createElement('div');
-                div.className = 'p-2.5 rounded-xl border bg-slate-900 border-white/10 flex items-center justify-between';
-                
-                div.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-base">${skill.icon}</div>
-                        <div>
-                            <div class="text-xs font-black text-white">${skill.name} <span class="text-cyan-400">Lvl ${currentLvl}/${skill.maxLevel}</span></div>
-                            <div class="text-[10px] text-gray-400">${skill.desc}</div>
-                        </div>
-                    </div>
-                    <div>
-                        ${isMax ? '<span class="text-[10px] font-bold text-amber-400 px-2 py-1">MAXED</span>' :
-                          `<button onclick="upgradeSkill('${skill.id}')" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">🪙 ${nextCost}</button>`
-                        }
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateQuestsUI() {
-            const container = document.getElementById('questsContainer');
-            container.innerHTML = '';
-            dailyQuests.forEach(q => {
-                const div = document.createElement('div');
-                div.className = 'p-3 rounded-xl border bg-slate-900 border-white/10 flex items-center justify-between';
-                div.innerHTML = `
-                    <div>
-                        <div class="text-xs font-black text-white">${q.title}</div>
-                        <div class="text-[10px] text-gray-400">${q.desc} (${q.progress}/${q.target})</div>
-                    </div>
-                    <div>
-                        ${q.completed ? '<span class="text-[10px] font-bold text-emerald-400 px-2 py-1">COMPLETED ✓</span>' : `<span class="text-xs font-bold text-amber-400">+${q.reward} 🪙</span>`}
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateAchievementsUI() {
-            const container = document.getElementById('achievementsContainer');
-            container.innerHTML = '';
-            achievements.forEach(ach => {
-                const div = document.createElement('div');
-                div.className = 'p-3 rounded-xl border bg-slate-900 border-white/10 flex items-center justify-between';
-                div.innerHTML = `
-                    <div>
-                        <div class="text-xs font-black text-white">${ach.title}</div>
-                        <div class="text-[10px] text-gray-400">${ach.desc} (${ach.progress}/${ach.target})</div>
-                    </div>
-                    <div>
-                        ${ach.unlocked ? '<span class="text-[10px] font-bold text-cyan-400 px-2 py-1">UNLOCKED ✓</span>' : `<span class="text-xs font-bold text-amber-400">+${ach.reward} 🪙</span>`}
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function buySkin(id) {
-            const skin = SKINS.find(s => s.id === id);
-            if (coins >= skin.cost) {
-                coins -= skin.cost;
+        function buySkin(id, cost) {
+            if (coins >= cost) {
+                coins -= cost;
                 unlockedSkins.push(id);
                 activeSkin = id;
                 updateCoinDisplays();
-                updateSkinsUI();
+                renderShopItems();
                 updateAbilityHUD();
                 sound.playPowerup();
             } else {
@@ -2547,135 +2512,111 @@
             }
         }
 
-        function equipSkin(id) {
-            activeSkin = id;
-            updateSkinsUI();
-            updateAbilityHUD();
-            sound.playScore();
+        function selectPortalSkin(id) {
+            activePortalSkin = id;
+            renderShopItems();
         }
 
-        function buyPortal(id) {
-            const portal = PORTAL_SKINS.find(p => p.id === id);
-            if (coins >= portal.cost) {
-                coins -= portal.cost;
+        function buyPortalSkin(id, cost) {
+            if (coins >= cost) {
+                coins -= cost;
                 unlockedPortals.push(id);
                 activePortalSkin = id;
                 updateCoinDisplays();
-                updatePortalsUI();
+                renderShopItems();
                 sound.playPowerup();
             } else {
                 sound.playCrash();
             }
         }
 
-        function equipPortal(id) {
-            activePortalSkin = id;
-            updatePortalsUI();
-            sound.playScore();
+        function selectTrail(id) {
+            activeTrail = id;
+            renderShopItems();
         }
 
-        function buyTrail(id) {
-            const trailObj = TRAILS.find(t => t.id === id);
-            if (coins >= trailObj.cost) {
-                coins -= trailObj.cost;
+        function buyTrail(id, cost) {
+            if (coins >= cost) {
+                coins -= cost;
                 unlockedTrails.push(id);
                 activeTrail = id;
                 updateCoinDisplays();
-                updateTrailsUI();
+                renderShopItems();
                 sound.playPowerup();
             } else {
                 sound.playCrash();
             }
         }
 
-        function equipTrail(id) {
-            activeTrail = id;
-            updateTrailsUI();
-            sound.playScore();
-        }
-
-        function upgradeSkill(id) {
-            const skill = SKILLS_UPGRADES.find(s => s.id === id);
-            const currentLvl = skillLevels[id];
-            if (currentLvl >= skill.maxLevel) return;
-
-            const cost = Math.floor(skill.baseCost * Math.pow(skill.costScale, currentLvl));
-            if (coins >= cost) {
+        function upgradeSkill(id, cost) {
+            if (coins >= cost && skillLevels[id] < 5) {
                 coins -= cost;
                 skillLevels[id]++;
                 updateCoinDisplays();
-                updateSkillsUI();
+                renderShopItems();
                 sound.playPowerup();
             } else {
                 sound.playCrash();
             }
         }
 
-        function promptWatchAd(type, id) {
+        function openAdModal(type, id) {
             pendingAdItemType = type;
             pendingAdItemId = id;
             document.getElementById('adModalTitle').innerText = "WATCH AD TO UNLOCK";
             document.getElementById('adModalDescription').innerText = "Watch a quick promotional video to instantly unlock this item for free!";
+            document.getElementById('adProgressBarContainer').classList.add('hidden');
+            document.getElementById('watchAdBtn').classList.remove('hidden');
             document.getElementById('adModalOverlay').classList.remove('hidden');
         }
 
-        function openAdForCoins() {
-            pendingAdItemType = 'coins';
-            document.getElementById('adModalTitle').innerText = "WATCH AD FOR COINS";
-            document.getElementById('adModalDescription').innerText = "Watch a quick video to receive 200 free arcade coins!";
-            document.getElementById('adModalOverlay').classList.remove('hidden');
+        function closeAdModal() {
+            document.getElementById('adModalOverlay').classList.add('hidden');
+            pendingAdItemType = null;
+            pendingAdItemId = null;
         }
 
         function simulateAdPlayback() {
             const btn = document.getElementById('watchAdBtn');
-            const container = document.getElementById('adProgressBarContainer');
-            const bar = document.getElementById('adProgressBar');
+            const progressContainer = document.getElementById('adProgressBarContainer');
+            const progressBar = document.getElementById('adProgressBar');
+
             btn.classList.add('hidden');
-            container.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
 
             let progress = 0;
             const interval = setInterval(() => {
                 progress += 5;
-                bar.style.width = `${progress}%`;
+                progressBar.style.width = `${progress}%`;
                 if (progress >= 100) {
                     clearInterval(interval);
-                    bar.style.width = '0%';
-                    container.classList.add('hidden');
-                    btn.classList.remove('hidden');
                     document.getElementById('adModalOverlay').classList.add('hidden');
 
                     if (pendingAdItemType === 'skin') {
                         if (!unlockedSkins.includes(pendingAdItemId)) unlockedSkins.push(pendingAdItemId);
                         activeSkin = pendingAdItemId;
-                        updateSkinsUI();
+                        renderShopItems();
                         updateAbilityHUD();
-                        spawnFloatingText('🎁 SKIN UNLOCKED!', canvas.width / 2 - 70, canvas.height / 2, '#38bdf8');
+                        spawnFloatingText('🎁 SKIN UNLOCKED VIA AD!', canvas.width / 2 - 90, canvas.height / 2, '#38bdf8');
                     } else if (pendingAdItemType === 'portal') {
                         if (!unlockedPortals.includes(pendingAdItemId)) unlockedPortals.push(pendingAdItemId);
                         activePortalSkin = pendingAdItemId;
-                        updatePortalsUI();
-                        spawnFloatingText('🎁 PORTAL UNLOCKED!', canvas.width / 2 - 70, canvas.height / 2, '#38bdf8');
+                        renderShopItems();
+                        spawnFloatingText('🎁 PORTAL UNLOCKED VIA AD!', canvas.width / 2 - 90, canvas.height / 2, '#38bdf8');
                     } else if (pendingAdItemType === 'trail') {
                         if (!unlockedTrails.includes(pendingAdItemId)) unlockedTrails.push(pendingAdItemId);
                         activeTrail = pendingAdItemId;
-                        updateTrailsUI();
-                        spawnFloatingText('🎁 TRAIL UNLOCKED!', canvas.width / 2 - 70, canvas.height / 2, '#38bdf8');
-                    } else if (pendingAdItemType === 'coins') {
-                        coins += 200;
-                        updateCoinDisplays();
-                        spawnFloatingText('+200 🪙 BONUS!', canvas.width / 2 - 60, canvas.height / 2, '#f59e0b');
+                        renderShopItems();
+                        spawnFloatingText('🎁 TRAIL UNLOCKED VIA AD!', canvas.width / 2 - 90, canvas.height / 2, '#38bdf8');
                     } else if (pendingAdItemType === 'full_heart_ad') {
                         adsWatchedForHeartsCount++;
                         hearts = 6;
                         updateHeartsDisplay();
-
-                        const leftCount = 3 - adsWatchedForHeartsCount;
-                        document.getElementById('adHeartCount').innerText = `(${leftCount} left)`;
-                        if (leftCount <= 0) {
+                        document.getElementById('adHeartCount').innerText = `(${3 - adsWatchedForHeartsCount} left)`;
+                        if (adsWatchedForHeartsCount >= 3) {
                             document.getElementById('watchAdHeartBtn').classList.add('opacity-50', 'cursor-not-allowed');
                         }
-
-                        // Resume game from gameover state
                         document.getElementById('gameOverOverlay').classList.add('hidden');
                         gameState = 'PLAYING';
                         dragon.invincibleTimer = 120;
@@ -2686,16 +2627,106 @@
                     pendingAdItemType = null;
                     pendingAdItemId = null;
                 }
-            }, 100);
+            }, 75);
         }
 
-        function closeAdModal() {
-            document.getElementById('adModalOverlay').classList.add('hidden');
+        function openAdForCoins() {
+            pendingAdItemType = 'coins';
+            document.getElementById('adModalTitle').innerText = "WATCH AD FOR 200 COINS";
+            document.getElementById('adModalDescription').innerText = "Watch a quick video advertisement to receive +200 free arcade coins!";
             document.getElementById('adProgressBarContainer').classList.add('hidden');
             document.getElementById('watchAdBtn').classList.remove('hidden');
-            pendingAdItemType = null;
-            pendingAdItemId = null;
+            document.getElementById('adModalOverlay').classList.remove('hidden');
         }
+
+        function openQuests() {
+            wasPlayingBeforeShop = (gameState === 'PLAYING' && !isPaused);
+            if (gameState === 'PLAYING' && !isPaused) {
+                isPaused = true;
+                document.getElementById('pauseBtnIcon').innerText = '▶';
+                document.getElementById('pauseOverlay').classList.add('hidden');
+            }
+            document.getElementById('questsOverlay').classList.remove('hidden');
+            renderQuests();
+        }
+
+        function closeQuests() {
+            document.getElementById('questsOverlay').classList.add('hidden');
+            if (wasPlayingBeforeShop) {
+                isPaused = false;
+                document.getElementById('pauseBtnIcon').innerText = '⏸';
+            }
+        }
+
+        function renderQuests() {
+            let html = '';
+            dailyQuests.forEach(q => {
+                const pct = Math.floor((q.progress / q.target) * 100);
+                html += `
+                    <div class="p-3 rounded-xl bg-slate-900/90 border border-white/10 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-purple-300">${q.title}</span>
+                            <span class="text-[10px] font-bold text-amber-400">+${q.reward} 🪙</span>
+                        </div>
+                        <div class="text-[11px] text-slate-300">${q.desc}</div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                                <div class="h-full bg-purple-500" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-400">${q.progress}/${q.target}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('questsContainer').innerHTML = html;
+        }
+
+        function openAchievements() {
+            wasPlayingBeforeShop = (gameState === 'PLAYING' && !isPaused);
+            if (gameState === 'PLAYING' && !isPaused) {
+                isPaused = true;
+                document.getElementById('pauseBtnIcon').innerText = '▶';
+                document.getElementById('pauseOverlay').classList.add('hidden');
+            }
+            document.getElementById('achievementsOverlay').classList.remove('hidden');
+            renderAchievements();
+        }
+
+        function closeAchievements() {
+            document.getElementById('achievementsOverlay').classList.add('hidden');
+            if (wasPlayingBeforeShop) {
+                isPaused = false;
+                document.getElementById('pauseBtnIcon').innerText = '⏸';
+            }
+        }
+
+        function renderAchievements() {
+            let html = '';
+            achievements.forEach(ach => {
+                const pct = Math.min(100, Math.floor((ach.progress / ach.target) * 100));
+                html += `
+                    <div class="p-3 rounded-xl bg-slate-900/90 border border-white/10 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-cyan-300">${ach.title} ${ach.unlocked ? '✅' : ''}</span>
+                            <span class="text-[10px] font-bold text-amber-400">+${ach.reward} 🪙</span>
+                        </div>
+                        <div class="text-[11px] text-slate-300">${ach.desc}</div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                                <div class="h-full bg-cyan-500" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-400">${ach.progress}/${ach.target}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('achievementsContainer').innerHTML = html;
+        }
+
+        resizeCanvas();
+        updateCoinDisplays();
+        updateHeartsDisplay();
+        updateAbilityHUD();
 
         function gameLoop() {
             update();
@@ -2703,9 +2734,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        resizeCanvas();
-        updateCoinDisplays();
-        updateAbilityHUD();
         requestAnimationFrame(gameLoop);
     </script>
 </body>
